@@ -34,6 +34,10 @@ CREATE TABLE IF NOT EXISTS staff (
   created_at timestamptz DEFAULT now()
 );
 
+-- Graceful upgrade: add new columns to existing staff table
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS can_view_all      boolean NOT NULL DEFAULT false;
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS can_create_groups boolean NOT NULL DEFAULT false;
+
 -- Default system admin (login: SVC000 / Admin1234, forced to reset)
 INSERT INTO staff (svc_no,name,email,password,role,active,must_reset_password,can_view_all,can_create_groups)
 VALUES ('SVC000','System Admin','','Admin1234','admin',true,false,true,true)
