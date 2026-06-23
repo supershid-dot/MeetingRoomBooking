@@ -367,6 +367,7 @@ tbody tr:hover td{background:var(--panel2)}
       <div class="field"><label>Password</label><input type="password" id="li-pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
       <div id="li-err" class="alert a-bad hidden"></div>
       <button class="btn btn-accent btn-block" id="li-btn" onclick="doLogin()" style="padding:11px">Sign in</button>
+      <div style="text-align:center;margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="openForgotPwd()" style="font-size:12px;color:var(--accent)">Forgot password?</button></div>
     </div>
     <div style="margin-top:14px;text-align:center">
       <button class="btn btn-ghost btn-sm" onclick="resetConfig()" style="font-size:11px">Change database</button>
@@ -385,7 +386,7 @@ tbody tr:hover td{background:var(--panel2)}
     <div class="stack">
       <div class="field"><label>New password</label><input type="password" id="np-1" placeholder="••••••••" onkeydown="if(event.key==='Enter')doSetNewPwd()"/></div>
       <div class="field"><label>Confirm password</label><input type="password" id="np-2" placeholder="••••••••" onkeydown="if(event.key==='Enter')doSetNewPwd()"/></div>
-      <div style="font-size:11px;color:var(--faint)">Min 8 characters, at least one letter and one number.</div>
+      <div style="font-size:11px;color:var(--faint)">Min 10 characters — uppercase, lowercase, number, and special character (e.g. !@#$%).</div>
       <div id="np-err" class="alert a-bad hidden"></div>
       <button class="btn btn-accent btn-block" id="np-btn" onclick="doSetNewPwd()" style="padding:11px">Set password &amp; continue</button>
     </div>
@@ -401,6 +402,7 @@ tbody tr:hover td{background:var(--panel2)}
     </div>
     <div class="spacer"></div>
     <button class="icon-btn" onclick="openSearch()" title="Search meetings"><i class="ti ti-search" aria-hidden="true"></i></button>
+    <button class="icon-btn" onclick="openChangePwdModal()" title="Change password"><i class="ti ti-lock" aria-hidden="true"></i></button>
     <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme"><i class="ti ti-moon" id="theme-icon" aria-hidden="true"></i></button>
     <div class="who">
       <div class="avatar" id="who-av"></div>
@@ -583,7 +585,8 @@ function durationOptions(sel,maxDur){const cap=Math.max(1,Math.min(DAY_SLOTS,max
 /* Does [aStart,aStart+aDur) overlap [bStart,bStart+bDur)? */
 function slotsOverlap(aStart,aDur,bStart,bDur){return aStart<bStart+bDur&&bStart<aStart+aDur;}
 function todayStr(){return dStr(new Date());}
-function pwdIssue(p){if(!p||p.length<8)return'Minimum 8 characters.';if(!/[0-9]/.test(p))return'Must include at least one number.';if(!/[A-Za-z]/.test(p))return'Must include at least one letter.';return null;}
+function pwdIssue(p){if(!p||p.length<10)return'Minimum 10 characters.';if(!/[A-Z]/.test(p))return'Must include at least one uppercase letter.';if(!/[a-z]/.test(p))return'Must include at least one lowercase letter.';if(!/[0-9]/.test(p))return'Must include at least one number.';if(!/[^A-Za-z0-9]/.test(p))return'Must include at least one special character (e.g. !@#$%).';return null;}
+async function hashPwd(p){const enc=new TextEncoder();const buf=await crypto.subtle.digest('SHA-256',enc.encode(p));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const MODE_LABEL={physical:'In person',online:'Online',both:'Hybrid'};
 const MODE_ICON={physical:'ti-map-pin',online:'ti-video',both:'ti-device-laptop'};
 
@@ -666,7 +669,13 @@ async function doLogin(){
   try{
     const rows=await GET('staff','select=*,sections(id,name)&svc_no=ilike.'+encodeURIComponent(svc)+'&active=eq.true');
     if(!rows.length){showAlert(err,'Account not found or inactive.');return;}
-    const user=rows.find(r=>r.password===pwd);
+    const hash=await hashPwd(pwd);
+    let user=rows.find(r=>r.password===hash);
+    if(!user){
+      // plaintext fallback for accounts not yet migrated
+      user=rows.find(r=>r.password===pwd);
+      if(user){try{await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc),{password:hash});user.password=hash;}catch(e_){}}
+    }
     if(!user){showAlert(err,'Incorrect password.');return;}
     U=user;
     if(user.must_reset_password){showPage('newpwd');document.getElementById('np-1').value='';document.getElementById('np-2').value='';document.getElementById('np-err').classList.add('hidden');return;}
@@ -680,7 +689,7 @@ async function doSetNewPwd(){
   const issue=pwdIssue(p1);if(issue){showAlert(err,issue);return;}
   if(p1!==p2){showAlert(err,'Passwords do not match.');return;}
   btn.disabled=true;btn.innerHTML='<div class="spin" style="width:15px;height:15px;border-width:2px;margin:0 auto"></div>';
-  try{await PATCH('staff','svc_no=eq.'+encodeURIComponent(U.svc_no),{password:p1,must_reset_password:false});U.password=p1;U.must_reset_password=false;showToast('Password updated');enterApp();}
+  try{const h=await hashPwd(p1);await PATCH('staff','svc_no=eq.'+encodeURIComponent(U.svc_no),{password:h,must_reset_password:false});U.password=h;U.must_reset_password=false;showToast('Password updated');enterApp();}
   catch(e){showAlert(err,'Error: '+e.message);}
   finally{btn.disabled=false;btn.innerHTML='Set password & continue';}
 }
@@ -1030,7 +1039,7 @@ function openNewMeetingModal(preDate,preSlot,preRoomId){
     <div>
       <div class="section-title">Format</div>
       <div class="pill-group">
-        <button class="pill active" id="pill-phys" onclick="setMMode('physical')"><i class="ti ti-map-pin" aria-hidden="true"></i> Physical</button>
+        <button class="pill active" id="pill-phys" onclick="setMMode('physical')"><i class="ti ti-map-pin" aria-hidden="true"></i> In person</button>
         <button class="pill" id="pill-online" onclick="setMMode('online')"><i class="ti ti-video" aria-hidden="true"></i> Online</button>
         <button class="pill" id="pill-both" onclick="setMMode('both')"><i class="ti ti-device-laptop" aria-hidden="true"></i> Hybrid</button>
       </div>
@@ -1447,7 +1456,7 @@ function editMeetingModal(m){
     <div>
       <div class="section-title">Format</div>
       <div class="pill-group">
-        <button class="pill${m.meeting_mode!=='online'&&m.meeting_mode!=='both'?' active':''}" id="pill-phys" onclick="setMMode('physical')"><i class="ti ti-map-pin" aria-hidden="true"></i> Physical</button>
+        <button class="pill${m.meeting_mode!=='online'&&m.meeting_mode!=='both'?' active':''}" id="pill-phys" onclick="setMMode('physical')"><i class="ti ti-map-pin" aria-hidden="true"></i> In person</button>
         <button class="pill${m.meeting_mode==='online'?' active':''}" id="pill-online" onclick="setMMode('online')"><i class="ti ti-video" aria-hidden="true"></i> Online</button>
         <button class="pill${m.meeting_mode==='both'?' active':''}" id="pill-both" onclick="setMMode('both')"><i class="ti ti-device-laptop" aria-hidden="true"></i> Hybrid</button>
       </div>
@@ -2195,7 +2204,7 @@ async function saveStaff(){
   const can_create_groups=document.getElementById('m-groups').checked;
   if(!svc_no||!password||!name){alert('Fill all required fields.');return;}
   const issue=pwdIssue(password);if(issue){alert(issue);return;}
-  try{await POST('staff',{svc_no,name,email,telegram_chat_id,section_id,password,role,active:true,must_reset_password:true,can_view_all,can_create_groups});await loadAll();closeModal();renderAdmin();showToast('Staff created — they\'ll set their own password on first login');}catch(e){alert(e.message);}
+  try{const hp=await hashPwd(password);await POST('staff',{svc_no,name,email,telegram_chat_id,section_id,password:hp,role,active:true,must_reset_password:true,can_view_all,can_create_groups});await loadAll();closeModal();renderAdmin();showToast('Staff created — they\'ll set their own password on first login');}catch(e){alert(e.message);}
 }
 async function updateStaff(svc_no){
   const name=document.getElementById('m-fn').value.trim();
@@ -2214,7 +2223,7 @@ async function updateStaff(svc_no){
 async function resetPwd(svc_no){
   const pwd=document.getElementById('m-np').value.trim();
   const issue=pwdIssue(pwd);if(issue){alert(issue);return;}
-  try{await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc_no),{password:pwd,must_reset_password:true});closeModal();showToast('Password reset — they\'ll be prompted on next login');}catch(e){alert(e.message);}
+  try{const h=await hashPwd(pwd);await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc_no),{password:h,must_reset_password:true});closeModal();showToast('Password reset — they\'ll be prompted on next login');}catch(e){alert(e.message);}
 }
 
 /* =================== HELPERS =================== */
@@ -2333,6 +2342,47 @@ async function saveMinutes(meetingId){
     const rows=await GET('meetings','select=*,participants(*)&id=eq.'+meetingId);
     if(rows[0])viewMeetingModal(rows[0]);
   }catch(e){alert(e.message);}
+}
+
+/* =================== PASSWORD SELF-SERVICE =================== */
+function openForgotPwd(){
+  const svc=(document.getElementById('li-svc').value||'').trim().toUpperCase();
+  showModal(`<div class="modal-head"><div class="modal-title">Forgot password</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+<div class="modal-body"><div class="stack">
+<div class="alert a-info"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Passwords can only be reset by a system administrator. Please contact your admin and ask them to reset your password${svc?' for account <strong>'+esc(svc)+'</strong>':''}.</span></div>
+<div style="font-size:13px;color:var(--dim)">Once reset, you will be prompted to set a new secure password when you next sign in.</div>
+</div></div>
+<div class="modal-foot"><button class="btn btn-accent" onclick="closeModal()">OK</button></div>`);
+}
+function openChangePwdModal(){
+  showModal(`<div class="modal-head"><div class="modal-title">Change password</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+<div class="modal-body"><div class="stack">
+<div class="field"><label>Current password</label><input type="password" id="cp-cur" placeholder="••••••••" autocomplete="current-password"/></div>
+<div class="field"><label>New password</label><input type="password" id="cp-new" placeholder="••••••••" autocomplete="new-password"/></div>
+<div class="field"><label>Confirm new password</label><input type="password" id="cp-con" placeholder="••••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter')doChangePwd()"/></div>
+<div style="font-size:11px;color:var(--faint)">Min 10 chars — uppercase, lowercase, number, and special character (e.g. !@#$%).</div>
+<div id="cp-err" class="alert a-bad hidden"></div>
+</div></div>
+<div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" id="cp-btn" onclick="doChangePwd()">Update password</button></div>`);
+}
+async function doChangePwd(){
+  const cur=document.getElementById('cp-cur').value;
+  const np=document.getElementById('cp-new').value;
+  const con=document.getElementById('cp-con').value;
+  const err=document.getElementById('cp-err'),btn=document.getElementById('cp-btn');
+  const issue=pwdIssue(np);if(issue){showAlert(err,issue);return;}
+  if(np!==con){showAlert(err,'Passwords do not match.');return;}
+  btn.disabled=true;btn.innerHTML='<div class="spin" style="width:15px;height:15px;border-width:2px;margin:0 auto"></div>';
+  try{
+    const curHash=await hashPwd(cur);
+    const matched=U.password===curHash||U.password===cur;
+    if(!matched){showAlert(err,'Current password is incorrect.');return;}
+    const newHash=await hashPwd(np);
+    await PATCH('staff','svc_no=eq.'+encodeURIComponent(U.svc_no),{password:newHash});
+    U.password=newHash;
+    closeModal();showToast('Password changed successfully');
+  }catch(e){showAlert(err,'Error: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.innerHTML='Update password';}}
 }
 
 /* =================== INIT =================== */
