@@ -118,6 +118,7 @@ tbody tr:hover td{background:var(--panel2)}
 .tag-ext{background:var(--ext-bg);color:var(--ext-ink)}
 .tag-pub{background:var(--good-bg);color:var(--good-ink)}
 .tag-priv{background:var(--warn-bg);color:var(--warn-ink)}
+.tag-mode{background:var(--panel2);color:var(--dim)}
 .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:var(--mono);text-transform:uppercase;letter-spacing:.03em}
 .b-good{background:var(--good-bg);color:var(--good-ink)}
 .b-bad{background:var(--bad-bg);color:var(--bad-ink)}
@@ -157,7 +158,7 @@ tbody tr:hover td{background:var(--panel2)}
 .ctrl-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
 .week-nav{display:flex;align-items:center;gap:6px}
 .week-lbl{font-size:13px;font-weight:700;min-width:160px;text-align:center;font-family:var(--mono)}
-.staff-sel{padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);font-size:12.5px;font-weight:600;cursor:pointer;max-width:160px}
+.staff-sel{padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);font-size:12.5px;font-weight:600;cursor:pointer;max-width:200px}
 
 /* DAYSTRIP */
 .daystrip{display:flex;gap:5px;overflow-x:auto;padding:1px 1px 6px;max-width:100%;-webkit-overflow-scrolling:touch}
@@ -222,10 +223,20 @@ tbody tr:hover td{background:var(--panel2)}
 .rsvp-declined{background:var(--bad)}
 .rsvp-pending{background:var(--warn)}
 
-/* VIEW SECTION TITLE */
+/* ATTENDANCE */
+.att-seg{display:flex;gap:4px;flex-shrink:0}
+.att-btn{padding:3px 8px;font-size:10.5px;font-weight:700;border-radius:6px;border:1px solid var(--line);background:var(--panel)}
+.att-btn.on-present{background:var(--good-bg);color:var(--good-ink);border-color:transparent}
+.att-btn.on-absent{background:var(--bad-bg);color:var(--bad-ink);border-color:transparent}
+.att-btn.on-late{background:var(--warn-bg);color:var(--warn-ink);border-color:transparent}
+
+/* GROUP CHIP */
+.grp-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:100px;background:var(--accent-bg);color:var(--accent-ink);font-size:12px;font-weight:600;border:1px solid var(--line)}
+
+/* SECTION TITLE */
 .section-title{font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;margin-top:14px}
 
-/* MEETING CARD (my meetings list) */
+/* MEETING CARD */
 .mcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;transition:border-color var(--ease)}
 .mcard:hover{border-color:var(--accent)}
 .mcard-bar{height:3px}
@@ -247,7 +258,7 @@ tbody tr:hover td{background:var(--panel2)}
 /* TOAST */
 .toastwrap{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:300;pointer-events:none}
 @media(min-width:900px){.toastwrap{bottom:24px}}
-.toast{background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:100px;font-size:12.5px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transform:translateY(8px);transition:all .22s ease;white-space:nowrap}
+.toast{background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:100px;font-size:12.5px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transform:translateY(8px);transition:all .22s ease;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
 .toast.show{opacity:1;transform:translateY(0)}
 [data-theme=light] .toast{background:#111;color:#fff}
 
@@ -263,6 +274,10 @@ tbody tr:hover td{background:var(--panel2)}
 /* ADMIN GRID */
 .adgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 @media(max-width:780px){.adgrid{grid-template-columns:1fr}}
+.chk-list{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:8px}
+.chk-list label{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;padding:4px 6px;border-radius:6px;cursor:pointer}
+.chk-list label:hover{background:var(--panel2)}
+.chk-list input{width:14px;height:14px;accent-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -346,9 +361,9 @@ tbody tr:hover td{background:var(--panel2)}
   <main class="main">
     <div class="tabs-desktop" id="tabs-d"></div>
 
-    <!-- CALENDAR TAB -->
+    <!-- CALENDAR TAB (meeting schedule) -->
     <div id="tab-calendar">
-      <div class="ph"><div class="ph-eyebrow" id="cal-eyebrow">Calendar</div><div class="ph-title">Schedule</div><div class="ph-sub">Your meetings and bookings this week</div></div>
+      <div class="ph"><div class="ph-eyebrow" id="cal-eyebrow">Calendar</div><div class="ph-title">Meeting Schedule</div><div class="ph-sub">Your meetings and invitations this week</div></div>
       <div class="ctrl-row">
         <div class="week-nav">
           <button class="btn btn-icon btn-sm" onclick="prevWeek()"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
@@ -364,12 +379,31 @@ tbody tr:hover td{background:var(--panel2)}
       <div class="wgwrap"><div class="wg" id="wg"></div></div>
     </div>
 
+    <!-- ROOMS TAB (meeting room booking calendar) -->
+    <div id="tab-rooms" class="hidden">
+      <div class="ph"><div class="ph-eyebrow">Rooms</div><div class="ph-title">Room Booking</div><div class="ph-sub">See availability and pre-book meeting rooms</div></div>
+      <div class="ctrl-row">
+        <div class="week-nav">
+          <button class="btn btn-icon btn-sm" onclick="rmPrevWeek()"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+          <span class="week-lbl" id="rm-week-lbl"></span>
+          <button class="btn btn-icon btn-sm" onclick="rmNextWeek()"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+        </div>
+        <select class="staff-sel" id="rm-room-sel" onchange="renderRooms()" title="Select a room"></select>
+        <button class="btn btn-accent btn-sm" onclick="bookSelectedRoom()"><i class="ti ti-plus" aria-hidden="true"></i>Book</button>
+        <button class="btn btn-icon btn-ghost btn-sm" onclick="renderRooms()" title="Refresh"><i class="ti ti-refresh" aria-hidden="true"></i></button>
+      </div>
+      <div class="daystrip" id="rm-day-strip"></div>
+      <div class="agenda" id="rm-agenda"></div>
+      <div class="wgwrap"><div class="wg" id="rm-wg"></div></div>
+    </div>
+
     <!-- MEETINGS TAB -->
     <div id="tab-meetings" class="hidden">
       <div class="ph"><div class="ph-eyebrow">My Meetings</div><div class="ph-title">All Meetings</div><div class="ph-sub">Internal bookings and external meetings</div></div>
       <div class="ctrl-row" style="margin-bottom:14px">
         <div class="pill-group" id="meetings-filter">
           <button class="pill active" data-filter="all" onclick="filterMeetings('all',this)">All</button>
+          <button class="pill" data-filter="today" onclick="filterMeetings('today',this)"><i class="ti ti-calendar-due" aria-hidden="true"></i> Today</button>
           <button class="pill" data-filter="internal" onclick="filterMeetings('internal',this)"><i class="ti ti-door" aria-hidden="true"></i> Internal</button>
           <button class="pill" data-filter="external" onclick="filterMeetings('external',this)"><i class="ti ti-building" aria-hidden="true"></i> External</button>
           <button class="pill" data-filter="upcoming" onclick="filterMeetings('upcoming',this)">Upcoming</button>
@@ -388,7 +422,7 @@ tbody tr:hover td{background:var(--panel2)}
 
     <!-- ADMIN TAB -->
     <div id="tab-admin" class="hidden">
-      <div class="ph"><div class="ph-eyebrow">Admin</div><div class="ph-title">Manage</div><div class="ph-sub">Staff, sections and rooms</div></div>
+      <div class="ph"><div class="ph-eyebrow">Admin</div><div class="ph-title">Manage</div><div class="ph-sub">Staff, sections, rooms and groups</div></div>
       <div class="adgrid">
         <div class="panel">
           <div class="panel-head"><div class="panel-title"><i class="ti ti-tag" aria-hidden="true"></i>Sections</div><button class="btn btn-accent btn-sm" onclick="openModal('add-section')"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
@@ -399,9 +433,13 @@ tbody tr:hover td{background:var(--panel2)}
           <div class="tbl-wrap"><table><thead><tr><th>Room</th><th>Cap.</th><th>Until</th><th></th></tr></thead><tbody id="rooms-tbody"></tbody></table></div>
         </div>
       </div>
+      <div class="panel" style="margin-bottom:14px">
+        <div class="panel-head"><div class="panel-title"><i class="ti ti-users-group" aria-hidden="true"></i>Meeting Groups</div><button class="btn btn-accent btn-sm" onclick="openModal('add-group')"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Group</th><th>Members</th><th>Actions</th></tr></thead><tbody id="groups-tbody"></tbody></table></div>
+      </div>
       <div class="panel">
         <div class="panel-head"><div class="panel-title"><i class="ti ti-users" aria-hidden="true"></i>Staff</div><button class="btn btn-accent btn-sm" onclick="openModal('add-staff')"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
-        <div class="tbl-wrap"><table><thead><tr><th>Svc no.</th><th>Name</th><th>Email</th><th>Section</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody id="staff-tbody"></tbody></table></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Svc no.</th><th>Name</th><th>Email</th><th>Section</th><th>Role</th><th>Access</th><th>Status</th><th>Actions</th></tr></thead><tbody id="staff-tbody"></tbody></table></div>
       </div>
     </div>
   </main>
@@ -438,10 +476,22 @@ let _sc={};
 function getSC(name){if(!name)return{bg:'rgba(139,143,153,.15)',tx:'#8b8f99',br:'rgba(139,143,153,.3)'};if(!_sc[name])_sc[name]=PALETTE[Object.keys(_sc).length%PALETTE.length];return _sc[name];}
 function initials(n){return(n||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();}
 function esc(s){return(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function dStr(d){return d.toISOString().split('T')[0];}
+/* Local-date string (avoids the UTC off-by-one-day bug). */
+function dStr(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 const DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-function fTime(slot,sh=8){const h=Math.floor(slot/2)+sh;const m=slot%2===0?'00':'30';return`${String(h).padStart(2,'0')}:${m}`;}
+/* SLOT MODEL: slot 0 = 08:00, each slot = 30 min. Calendar window 08:00–20:00. */
+const DAY_START_HOUR=8,DAY_END_HOUR=20,DAY_SLOTS=(DAY_END_HOUR-DAY_START_HOUR)*2;
+function fTime(slot,sh=DAY_START_HOUR){const h=Math.floor(slot/2)+sh;const m=slot%2===0?'00':'30';return`${String(h).padStart(2,'0')}:${m}`;}
+/* Start-time <option>s aligned with the calendar (value = slot index from 08:00). */
+function startTimeOptions(sel){let o='';for(let i=0;i<DAY_SLOTS;i++){o+=`<option value="${i}"${i===sel?' selected':''}>${fTime(i)}</option>`;}return o;}
+/* Duration <option>s in 30-min steps, capped to maxDur slots. */
+function durationOptions(sel,maxDur){const cap=Math.max(1,Math.min(32,maxDur==null?DAY_SLOTS:maxDur));let o='';for(let i=1;i<=cap;i++){const mn=i*30;const lbl=mn<60?mn+' min':Math.floor(mn/60)+'h'+(mn%60?' '+mn%60+'min':'');o+=`<option value="${i}"${i===sel?' selected':''}>${lbl}</option>`;}return o;}
+/* Does [aStart,aStart+aDur) overlap [bStart,bStart+bDur)? */
+function slotsOverlap(aStart,aDur,bStart,bDur){return aStart<bStart+bDur&&bStart<aStart+aDur;}
+function todayStr(){return dStr(new Date());}
 function pwdIssue(p){if(!p||p.length<8)return'Minimum 8 characters.';if(!/[0-9]/.test(p))return'Must include at least one number.';if(!/[A-Za-z]/.test(p))return'Must include at least one letter.';return null;}
+const MODE_LABEL={physical:'In person',online:'Online',both:'Hybrid'};
+const MODE_ICON={physical:'ti-map-pin',online:'ti-video',both:'ti-device-laptop'};
 
 /* =================== SUPABASE REST =================== */
 let SB_URL='',SB_KEY='';
@@ -473,11 +523,27 @@ async function saveConfig(){
 function resetConfig(){localStorage.removeItem('sb_url');localStorage.removeItem('sb_key');showPage('config');}
 
 /* =================== STATE =================== */
-let U=null,weekOffset=0,selectedStaffId=null,selectedDayIdx=null;
-let DB={sections:[],rooms:[],staff:[],meetings:[],myParticipations:[]};
+let U=null,weekOffset=0,rmWeekOffset=0,selectedStaffId=null,selectedDayIdx=null,rmDayIdx=null,selectedRoomId=null;
+let DB={sections:[],rooms:[],staff:[],groups:[],meetings:[]};
 let allMeetingsCache=[],meetingFilter='all';
 
 function showPage(p){['config','loading','login','newpwd','app'].forEach(x=>document.getElementById(x+'-page').classList.add('hidden'));document.getElementById(p+'-page').classList.remove('hidden');}
+
+/* =================== PERMISSIONS =================== */
+function canViewAll(){return U.role==='admin'||!!U.can_view_all;}
+function canUseGroups(){return U.role==='admin'||!!U.can_create_groups;}
+function visibleStaff(){
+  if(canViewAll())return DB.staff;
+  return DB.staff.filter(s=>s.id===U.id||(U.section_id&&s.section_id===U.section_id));
+}
+/* Creator OR same-section staff OR admin can manage a meeting. */
+function canManage(m){
+  if(U.role==='admin')return true;
+  if(m.created_by===U.id)return true;
+  if(U.section_id&&m.section_id&&U.section_id===m.section_id)return true;
+  if(U.sections&&m.section_name&&U.sections.name===m.section_name)return true;
+  return false;
+}
 
 /* =================== LOGIN =================== */
 async function doLogin(){
@@ -507,7 +573,7 @@ async function doSetNewPwd(){
   catch(e){showAlert(err,'Error: '+e.message);}
   finally{btn.disabled=false;btn.innerHTML='Set password & continue';}
 }
-function doLogout(){U=null;weekOffset=0;selectedStaffId=null;selectedDayIdx=null;showPage('login');document.getElementById('li-svc').value='';document.getElementById('li-pwd').value='';}
+function doLogout(){U=null;weekOffset=0;rmWeekOffset=0;selectedStaffId=null;selectedDayIdx=null;rmDayIdx=null;selectedRoomId=null;showPage('login');document.getElementById('li-svc').value='';document.getElementById('li-pwd').value='';}
 function enterApp(){
   document.getElementById('who-av').textContent=initials(U.name);
   document.getElementById('who-name').textContent=U.name;
@@ -525,23 +591,13 @@ async function loadAll(){
   ]);
   DB.sections=secs;DB.rooms=rooms;DB.staff=staff;
   secs.forEach(s=>getSC(s.name));
-  selectedStaffId=U.id;
-}
-async function loadMeetingsForWeek(staffId){
-  const ws=getWS();const we=new Date(ws);we.setDate(we.getDate()+6);
-  const meetings=await GET('meetings',`select=*,participants(*)&date=gte.${dStr(ws)}&date=lte.${dStr(we)}&order=date.asc&order=start_slot.asc`);
-  // For each meeting, check if this staff participates or created it
-  DB.meetings=meetings;
-  return meetings;
+  try{DB.groups=await GET('meeting_groups','select=*,meeting_group_members(staff_id)&order=name.asc');}catch(e){DB.groups=[];}
+  if(selectedStaffId==null)selectedStaffId=U.id;
+  if(selectedRoomId==null&&DB.rooms.length)selectedRoomId=DB.rooms[0].id;
 }
 async function loadAllMeetings(){
   const data=await GET('meetings',`select=*,participants(*)&order=date.desc&order=start_slot.asc`);
   allMeetingsCache=data;
-  return data;
-}
-async function loadMyNotifications(){
-  // Meetings where I'm a participant and RSVP is pending
-  const data=await GET('participants',`select=*,meetings(*)&staff_id=eq.${U.id}&rsvp=eq.pending`);
   return data;
 }
 
@@ -550,6 +606,7 @@ function buildNav(){
   const isAdmin=U.role==='admin';
   const tabs=[
     {id:'calendar',icon:'ti-calendar-week',label:'Calendar'},
+    {id:'rooms',icon:'ti-door',label:'Rooms'},
     {id:'meetings',icon:'ti-layout-list',label:'Meetings'},
     {id:'notif',icon:'ti-bell',label:'Inbox'},
     ...(isAdmin?[{id:'admin',icon:'ti-adjustments',label:'Admin'}]:[])
@@ -566,38 +623,138 @@ function buildNav(){
     b.textContent=t.label;b.onclick=()=>switchTab(t.id);td.appendChild(b);
   });
   buildStaffSelect();
+  buildRoomSelect();
 }
 function switchTab(id){
-  ['calendar','meetings','notif','admin'].forEach(t=>{const el=document.getElementById('tab-'+t);if(el)el.classList.add('hidden');});
+  ['calendar','rooms','meetings','notif','admin'].forEach(t=>{const el=document.getElementById('tab-'+t);if(el)el.classList.add('hidden');});
   document.getElementById('tab-'+id).classList.remove('hidden');
   document.querySelectorAll('.tbb[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
   document.querySelectorAll('.tab-btn[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
   if(id==='calendar'){renderCal();}
+  else if(id==='rooms'){renderRooms();}
   else if(id==='meetings'){renderMeetingsList();}
   else if(id==='notif'){renderNotifications();}
   else if(id==='admin'){renderAdmin();}
 }
 
-/* =================== STAFF SELECT (view others' schedule) =================== */
+/* =================== STAFF / ROOM SELECTS =================== */
 function buildStaffSelect(){
   const sel=document.getElementById('staff-sel');
-  sel.innerHTML='<option value="">— My schedule —</option>'+DB.staff.filter(s=>s.id!==U.id).map(s=>`<option value="${s.id}">${esc(s.name)}${s.sections?' · '+esc(s.sections.name):''}</option>`).join('');
-  sel.value='';
+  const others=visibleStaff().filter(s=>s.id!==U.id);
+  sel.innerHTML='<option value="">— My schedule —</option>'+others.map(s=>`<option value="${s.id}">${esc(s.name)}${s.sections?' · '+esc(s.sections.name):''}</option>`).join('');
+  sel.value=selectedStaffId&&selectedStaffId!==U.id?String(selectedStaffId):'';
 }
 function onStaffChange(){
   const v=document.getElementById('staff-sel').value;
-  selectedStaffId=v?parseInt(v):U.id;
+  selectedStaffId=v?parseInt(v):U.id;selectedDayIdx=null;
   renderCal();
 }
 function getViewingUser(){return DB.staff.find(s=>s.id===selectedStaffId)||U;}
+function buildRoomSelect(){
+  const sel=document.getElementById('rm-room-sel');
+  if(!DB.rooms.length){sel.innerHTML='<option value="">No rooms</option>';return;}
+  sel.innerHTML=DB.rooms.map(r=>`<option value="${r.id}">${esc(r.name)} (cap. ${r.capacity||'?'})</option>`).join('');
+  if(!selectedRoomId)selectedRoomId=DB.rooms[0].id;
+  sel.value=String(selectedRoomId);
+}
 
-/* =================== CALENDAR =================== */
-function getWS(){const n=new Date();n.setDate(n.getDate()+weekOffset*7);n.setDate(n.getDate()-n.getDay());n.setHours(0,0,0,0);return n;}
+/* =================== WEEK HELPERS =================== */
+function getWeekStart(offset){const n=new Date();n.setDate(n.getDate()+offset*7);n.setDate(n.getDate()-n.getDay());n.setHours(0,0,0,0);return n;}
 function prevWeek(){weekOffset--;selectedDayIdx=null;renderCal();}
 function nextWeek(){weekOffset++;selectedDayIdx=null;renderCal();}
+function rmPrevWeek(){rmWeekOffset--;rmDayIdx=null;renderRooms();}
+function rmNextWeek(){rmWeekOffset++;rmDayIdx=null;renderRooms();}
 
+function canSeeMeetingDetails(m){
+  if(m.privacy==='public')return true;
+  if(U.role==='admin')return true;
+  if(m.created_by===U.id)return true;
+  return m.participants&&m.participants.some(p=>p.staff_id===U.id);
+}
+function meetingColor(m){
+  if(m.type==='external')return{bg:'var(--ext-bg)',tx:'var(--ext-ink)',br:'var(--ext-bg)'};
+  return getSC(m.section_name);
+}
+
+/* =================== SHARED CALENDAR RENDERERS =================== */
+function buildDayStrip(stripEl,dates,today,selIdx,onPick){
+  stripEl.innerHTML='';let ac=null;
+  dates.forEach((d,i)=>{
+    const isToday=d.getTime()===today.getTime();
+    const chip=document.createElement('button');chip.className='daychip'+(isToday?' today':'')+(i===selIdx?' active':'');
+    chip.innerHTML=`<span class="dn">${DN[d.getDay()]}</span><span class="dd">${d.getDate()}</span>`;
+    chip.onclick=()=>onPick(i);
+    if(i===selIdx)ac=chip;
+    stripEl.appendChild(chip);
+  });
+  if(ac)requestAnimationFrame(()=>{const sr=stripEl.getBoundingClientRect(),cr=ac.getBoundingClientRect();stripEl.scrollLeft+=(cr.left+cr.width/2)-(sr.left+sr.width/2);});
+}
+function buildAgenda(agendaEl,date,today,meetings,opts){
+  agendaEl.innerHTML='';
+  const isPastDay=date<today;const ds=dStr(date);
+  for(let s=0;s<DAY_SLOTS;s++){
+    const slotMs=meetings.filter(m=>m.date===ds&&s>=m.start_slot&&s<m.start_slot+m.duration);
+    const newMs=slotMs.filter(m=>m.start_slot===s);
+    if(slotMs.length>0&&newMs.length===0)continue;
+    const row=document.createElement('div');row.className='ag-row'+(isPastDay?' past':'');
+    const tc=document.createElement('div');tc.className='ag-time';
+    const bc=document.createElement('div');bc.className='ag-body';
+    if(newMs.length>0){
+      const m=newMs[0];const c=meetingColor(m);const canSee=canSeeMeetingDetails(m);
+      tc.innerHTML=`<span>${fTime(m.start_slot)}</span><span>${fTime(m.start_slot+m.duration)}</span>`;
+      const typeLabel=m.type==='external'?'<i class="ti ti-building" aria-hidden="true"></i>':'<i class="ti ti-door" aria-hidden="true"></i>';
+      const title=canSee?esc(m.title):'Meeting (private)';
+      const sub=canSee?(m.location?esc(m.location):MODE_LABEL[m.meeting_mode]||''):esc(m.section_name||'');
+      bc.innerHTML=`<div class="ag-bar" style="background:${c.tx}"></div><div class="ag-info"><div class="ag-title">${typeLabel} ${title}</div><div class="ag-sub">${sub}</div></div>`;
+      row.onclick=()=>viewMeetingModal(m);
+    }else{
+      tc.innerHTML=`<span>${fTime(s)}</span><span>${fTime(s+1)}</span>`;
+      if(!isPastDay&&opts.clickable){bc.innerHTML='<div class="ag-add"><i class="ti ti-plus" aria-hidden="true"></i>'+(opts.addLabel||'Schedule')+'</div>';row.onclick=()=>opts.onSlot(ds,s);}
+      else{bc.innerHTML='<div class="ag-empty">Free</div>';}
+    }
+    row.appendChild(tc);row.appendChild(bc);agendaEl.appendChild(row);
+  }
+}
+function buildWeekGrid(gridEl,dates,today,meetings,opts){
+  gridEl.style.gridTemplateColumns=`56px repeat(7,1fr)`;gridEl.innerHTML='';
+  const corner=document.createElement('div');corner.className='wg-corner';gridEl.appendChild(corner);
+  dates.forEach((d,i)=>{
+    const isToday=d.getTime()===today.getTime();
+    const h=document.createElement('div');h.className='wg-dh'+(isToday?' today':'');
+    if(i===6)h.style.borderRight='none';
+    h.innerHTML=`<div class="wg-dn">${DN[d.getDay()]}</div><div class="wg-dd">${d.getDate()}</div>`;gridEl.appendChild(h);
+  });
+  for(let s=0;s<DAY_SLOTS;s++){
+    const hourline=s%2===1;
+    const tl=document.createElement('div');tl.className='wg-tl';if(s===DAY_SLOTS-1)tl.style.borderBottom='none';tl.textContent=fTime(s);gridEl.appendChild(tl);
+    dates.forEach((d,di)=>{
+      const cell=document.createElement('div');cell.className='wg-slot'+(hourline?' hourline':'');
+      const isPast=d<today;if(s===DAY_SLOTS-1)cell.style.borderBottom='none';if(di===6)cell.style.borderRight='none';
+      if(isPast)cell.classList.add('past');
+      const ds=dStr(d);
+      const bks=meetings.filter(m=>m.date===ds&&s>=m.start_slot&&s<m.start_slot+m.duration);
+      const newMs=bks.filter(m=>m.start_slot===s);
+      if(newMs.length>0){
+        const m=newMs[0];const c=meetingColor(m);const canSee=canSeeMeetingDetails(m);
+        cell.style.background=c.bg;
+        const blk=document.createElement('div');blk.className='wg-block';blk.style.cssText=`background:${c.bg};border:1px solid ${c.br}`;
+        const title=canSee?esc(m.title):'Private';
+        blk.innerHTML=`<div class="wg-block-title" style="color:${c.tx}">${title}</div><div class="wg-block-sub" style="color:${c.tx}">${esc(opts.blockSub?opts.blockSub(m):(m.section_name||''))}</div>`;
+        cell.appendChild(blk);cell.onclick=()=>viewMeetingModal(m);
+      }else if(bks.length>0){
+        const m=bks[0];const c=meetingColor(m);cell.style.background=c.bg;
+      }else if(!isPast&&opts.clickable){
+        const plus=document.createElement('div');plus.className='wg-plus';plus.innerHTML='<i class="ti ti-plus" aria-hidden="true"></i>';cell.appendChild(plus);
+        cell.onclick=()=>opts.onSlot(ds,s);
+      }
+      gridEl.appendChild(cell);
+    });
+  }
+}
+
+/* =================== CALENDAR TAB (schedule) =================== */
 async function renderCal(){
-  const ws=getWS();const we=new Date(ws);we.setDate(we.getDate()+6);
+  const ws=getWeekStart(weekOffset);const we=new Date(ws);we.setDate(we.getDate()+6);
   const s=dStr(ws),e=dStr(we);
   document.getElementById('week-lbl').textContent=`${ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${we.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
   const viewing=getViewingUser();
@@ -605,11 +762,8 @@ async function renderCal(){
   const ey=document.getElementById('cal-eyebrow');
   ey.textContent=isViewingSelf?`${(U.sections?U.sections.name:'').toUpperCase()} · CALENDAR`:`VIEWING: ${viewing.name.toUpperCase()}`;
 
-  // Fetch meetings visible in this week
   let meetings=[];
   try{meetings=await GET('meetings',`select=*,participants(*)&date=gte.${s}&date=lte.${e}&order=start_slot.asc`);}catch(e_){console.error(e_);}
-
-  // Filter to meetings relevant for the viewed staff
   const viewMeetings=meetings.filter(m=>{
     if(m.created_by===viewing.id)return true;
     return m.participants&&m.participants.some(p=>p.staff_id===viewing.id);
@@ -620,119 +774,94 @@ async function renderCal(){
   if(selectedDayIdx===null){const ti=dates.findIndex(d=>d.getTime()===today.getTime());selectedDayIdx=ti>=0?ti:0;}
   if(selectedDayIdx>6)selectedDayIdx=6;if(selectedDayIdx<0)selectedDayIdx=0;
 
-  renderDayStrip(dates,today);
-  renderAgenda(dates[selectedDayIdx],today,viewMeetings,isViewingSelf);
-  renderWeekGrid(dates,today,viewMeetings,isViewingSelf);
+  buildDayStrip(document.getElementById('day-strip'),dates,today,selectedDayIdx,(i)=>{selectedDayIdx=i;renderCal();});
+  const opts={clickable:isViewingSelf,onSlot:(ds,slot)=>openNewMeetingModal(ds,slot),blockSub:(m)=>m.section_name||''};
+  buildAgenda(document.getElementById('agenda'),dates[selectedDayIdx],today,viewMeetings,opts);
+  buildWeekGrid(document.getElementById('wg'),dates,today,viewMeetings,opts);
 }
 
-function renderDayStrip(dates,today){
-  const strip=document.getElementById('day-strip');strip.innerHTML='';let ac=null;
-  dates.forEach((d,i)=>{
-    const isToday=d.getTime()===today.getTime();
-    const chip=document.createElement('button');chip.className='daychip'+(isToday?' today':'')+(i===selectedDayIdx?' active':'');
-    chip.innerHTML=`<span class="dn">${DN[d.getDay()]}</span><span class="dd">${d.getDate()}</span>`;
-    chip.onclick=()=>{selectedDayIdx=i;renderCal();};
-    if(i===selectedDayIdx)ac=chip;
-    strip.appendChild(chip);
-  });
-  if(ac)requestAnimationFrame(()=>{const sr=strip.getBoundingClientRect(),cr=ac.getBoundingClientRect();strip.scrollLeft+=(cr.left+cr.width/2)-(sr.left+sr.width/2);});
-}
+/* =================== ROOMS TAB (room booking) =================== */
+async function renderRooms(){
+  buildRoomSelect();
+  const sel=document.getElementById('rm-room-sel');
+  selectedRoomId=sel.value?parseInt(sel.value):(DB.rooms[0]&&DB.rooms[0].id);
+  const ws=getWeekStart(rmWeekOffset);const we=new Date(ws);we.setDate(we.getDate()+6);
+  const s=dStr(ws),e=dStr(we);
+  document.getElementById('rm-week-lbl').textContent=`${ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${we.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
 
-function getMeetingsForSlot(date,slot,meetings){
-  const ds=dStr(date);
-  return meetings.filter(m=>m.date===ds&&slot>=m.start_slot&&slot<m.start_slot+m.duration);
-}
-function canSeeMeetingDetails(m){
-  if(m.privacy==='public')return true;
-  if(U.role==='admin')return true;
-  if(m.created_by===U.id)return true;
-  return m.participants&&m.participants.some(p=>p.staff_id===U.id);
-}
-function meetingColor(m){
-  if(m.type==='external')return{bg:'var(--ext-bg)',tx:'var(--ext-ink)',br:'var(--ext-bg)'};
-  const sec=m.section_name;return getSC(sec);
-}
-
-function renderAgenda(date,today,meetings,isViewingSelf){
-  const agenda=document.getElementById('agenda');agenda.innerHTML='';
-  const SH=8,EH=20,SLOTS=(EH-SH)*2;
-  const isPastDay=date<today;const ds=dStr(date);
-  const rendered=new Set();
-  for(let s=0;s<SLOTS;s++){
-    const slotMs=meetings.filter(m=>m.date===ds&&s>=m.start_slot&&s<m.start_slot+m.duration);
-    const newMs=slotMs.filter(m=>m.start_slot===s);
-    const isOccupied=slotMs.length>0;
-    if(isOccupied&&newMs.length===0)continue;
-
-    const row=document.createElement('div');row.className='ag-row'+(isPastDay?' past':'');
-    const tc=document.createElement('div');tc.className='ag-time';
-    const bc=document.createElement('div');bc.className='ag-body';
-
-    if(newMs.length>0){
-      const m=newMs[0];rendered.add(m.id);
-      const c=meetingColor(m);const canSee=canSeeMeetingDetails(m);
-      tc.innerHTML=`<span>${fTime(m.start_slot)}</span><span>${fTime(m.start_slot+m.duration)}</span>`;
-      const typeLabel=m.type==='external'?'<i class="ti ti-building" aria-hidden="true"></i>':'<i class="ti ti-door" aria-hidden="true"></i>';
-      const title=canSee?esc(m.title):'Meeting (private)';
-      const sub=canSee?(m.type==='internal'?esc(m.location||''):'External · '+esc(m.location||'')):esc(m.section_name||'');
-      bc.innerHTML=`<div class="ag-bar" style="background:${c.tx}"></div><div class="ag-info"><div class="ag-title">${typeLabel} ${title}</div><div class="ag-sub">${sub}</div></div>`;
-      row.onclick=()=>viewMeetingModal(m);
-    } else {
-      tc.innerHTML=`<span>${fTime(s)}</span><span>${fTime(s+1)}</span>`;
-      if(!isPastDay&&isViewingSelf){bc.innerHTML='<div class="ag-add"><i class="ti ti-plus" aria-hidden="true"></i>Schedule</div>';row.onclick=()=>openNewMeetingModal(dStr(date),s);}
-      else{bc.innerHTML='<div class="ag-empty">Free</div>';}
-    }
-    row.appendChild(tc);row.appendChild(bc);agenda.appendChild(row);
+  let roomMeetings=[];
+  if(selectedRoomId){
+    try{roomMeetings=await GET('meetings',`select=*,participants(*)&date=gte.${s}&date=lte.${e}&room_id=eq.${selectedRoomId}&type=eq.internal&order=start_slot.asc`);}catch(e_){console.error(e_);}
   }
+  const today=new Date();today.setHours(0,0,0,0);
+  const dates=Array.from({length:7},(_,i)=>{const d=new Date(ws);d.setDate(d.getDate()+i);return d;});
+  if(rmDayIdx===null){const ti=dates.findIndex(d=>d.getTime()===today.getTime());rmDayIdx=ti>=0?ti:0;}
+  if(rmDayIdx>6)rmDayIdx=6;if(rmDayIdx<0)rmDayIdx=0;
+
+  buildDayStrip(document.getElementById('rm-day-strip'),dates,today,rmDayIdx,(i)=>{rmDayIdx=i;renderRooms();});
+  const opts={clickable:!!selectedRoomId,addLabel:'Book room',onSlot:(ds,slot)=>openNewMeetingModal(ds,slot,selectedRoomId),blockSub:(m)=>m.created_by_name||m.section_name||''};
+  buildAgenda(document.getElementById('rm-agenda'),dates[rmDayIdx],today,roomMeetings,opts);
+  buildWeekGrid(document.getElementById('rm-wg'),dates,today,roomMeetings,opts);
+}
+function bookSelectedRoom(){
+  if(!selectedRoomId){showToast('No room selected.');return;}
+  openNewMeetingModal(null,null,selectedRoomId);
 }
 
-function renderWeekGrid(dates,today,meetings,isViewingSelf){
-  const SH=8,EH=20,SLOTS=(EH-SH)*2;
-  const grid=document.getElementById('wg');
-  grid.style.gridTemplateColumns=`56px repeat(7,1fr)`;grid.innerHTML='';
-  const corner=document.createElement('div');corner.className='wg-corner';grid.appendChild(corner);
-  dates.forEach((d,i)=>{
-    const isToday=d.getTime()===today.getTime();
-    const h=document.createElement('div');h.className='wg-dh'+(isToday?' today':'');
-    if(i===6)h.style.borderRight='none';
-    h.innerHTML=`<div class="wg-dn">${DN[d.getDay()]}</div><div class="wg-dd">${d.getDate()}</div>`;grid.appendChild(h);
-  });
-  for(let s=0;s<SLOTS;s++){
-    const hourline=s%2===1;
-    const tl=document.createElement('div');tl.className='wg-tl';if(s===SLOTS-1)tl.style.borderBottom='none';tl.textContent=fTime(s);grid.appendChild(tl);
-    dates.forEach((d,di)=>{
-      const cell=document.createElement('div');cell.className='wg-slot'+(hourline?' hourline':'');
-      const isPast=d<today;if(s===SLOTS-1)cell.style.borderBottom='none';if(di===6)cell.style.borderRight='none';
-      if(isPast)cell.classList.add('past');
-      const ds=dStr(d);
-      const bks=meetings.filter(m=>m.date===ds&&s>=m.start_slot&&s<m.start_slot+m.duration);
-      const newMs=bks.filter(m=>m.start_slot===s);
-      if(newMs.length>0){
-        const m=newMs[0];const c=meetingColor(m);const canSee=canSeeMeetingDetails(m);
-        cell.style.background=c.bg;
-        const blk=document.createElement('div');blk.className='wg-block';blk.style.cssText=`background:${c.bg};border:1px solid ${c.br}`;
-        const title=canSee?esc(m.title):'Private';
-        blk.innerHTML=`<div class="wg-block-title" style="color:${c.tx}">${title}</div><div class="wg-block-sub" style="color:${c.tx}">${esc(m.section_name||'')}</div>`;
-        cell.appendChild(blk);cell.onclick=()=>viewMeetingModal(m);
-      } else if(bks.length>0){
-        const m=bks[0];const c=meetingColor(m);cell.style.background=c.bg;
-      } else if(!isPast&&isViewingSelf){
-        const plus=document.createElement('div');plus.className='wg-plus';plus.innerHTML='<i class="ti ti-plus" aria-hidden="true"></i>';cell.appendChild(plus);
-        cell.onclick=()=>openNewMeetingModal(ds,s);
-      }
-      grid.appendChild(cell);
-    });
+/* =================== ROOM AVAILABILITY / DURATION =================== */
+/* Max consecutive free slots in a room from start_slot (0 = start itself is taken). */
+async function computeMaxDuration(date,room_id,start_slot,excludeId){
+  if(!room_id||!date)return DAY_SLOTS-start_slot;
+  let ms=[];
+  try{ms=await GET('meetings',`select=id,start_slot,duration&date=eq.${date}&room_id=eq.${room_id}&type=eq.internal`);}catch(e){return DAY_SLOTS-start_slot;}
+  ms=ms.filter(m=>m.id!==excludeId);
+  let limit=DAY_SLOTS;
+  for(const m of ms){
+    if(m.start_slot<=start_slot&&start_slot<m.start_slot+m.duration)return 0;
+    if(m.start_slot>start_slot)limit=Math.min(limit,m.start_slot);
   }
+  return Math.max(0,limit-start_slot);
+}
+/* Refresh the duration dropdown so users can only pick a free span (Issue 6). */
+async function refreshDurationOptions(){
+  const durSel=document.getElementById('nm-dur');if(!durSel)return;
+  const dateEl=document.getElementById('nm-date')||document.getElementById('em-date');
+  const startEl=document.getElementById('nm-start');
+  if(!dateEl||!startEl)return;
+  const date=dateEl.value,start=parseInt(startEl.value)||0;
+  const cur=parseInt(durSel.value)||1;
+  const needsPhys=window._mmode!=='online';
+  let room_id=null;
+  if(window._mtype==='internal'&&needsPhys&&!window._mnoroom){
+    const roomEl=document.getElementById('nm-room');if(roomEl)room_id=parseInt(roomEl.value)||null;
+  }
+  let maxDur;
+  if(room_id){maxDur=await computeMaxDuration(date,room_id,start,window._editMeetingId||null);}
+  else{maxDur=DAY_SLOTS-start;}
+  if(maxDur<=0){
+    durSel.innerHTML='<option value="">— room busy at this time —</option>';
+    return;
+  }
+  const keep=cur<=maxDur?cur:1;
+  durSel.innerHTML=durationOptions(keep,maxDur);
 }
 
 /* =================== NEW MEETING MODAL =================== */
-function openNewMeetingModal(preDate,preSlot){
-  const roomOpts=DB.rooms.map(r=>`<option value="${r.id}">${esc(r.name)} (cap. ${r.capacity||'?'})</option>`).join('');
-  const today=new Date().toISOString().split('T')[0];
-  const preD=preDate||today;
-  const preS=preSlot||16;// default 08:00
-  let timeOpts='';for(let i=0;i<48;i++){const h=Math.floor(i/2);const m=i%2===0?'00':'30';timeOpts+=`<option value="${i}"${i===preS?' selected':''}>${String(h).padStart(2,'0')}:${m}</option>`;}
-  let durOpts='';for(let i=1;i<=32;i++){const m=i*30;durOpts+=`<option value="${i}"${i===1?' selected':''}>${m<60?m+' min':Math.floor(m/60)+'h'+(m%60?' '+m%60+'min':'')}</option>`;}
+function staffOptionList(){return DB.staff.filter(s=>s.id!==U.id).map(s=>`<option value="${s.id}">${esc(s.name)} · ${s.sections?esc(s.sections.name):''}</option>`).join('');}
+function groupSelectBlock(){
+  if(!canUseGroups()||!DB.groups.length)return'';
+  return`<div class="section-title" style="margin-top:10px">Add a group</div>
+    <div class="r2">
+      <div class="field"><label>Group</label><select id="nm-add-group"><option value="">— select group —</option>${DB.groups.map(g=>`<option value="${g.id}">${esc(g.name)} (${(g.meeting_group_members||[]).length})</option>`).join('')}</select></div>
+      <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addGroupParticipants()"><i class="ti ti-users-plus" aria-hidden="true"></i>Add group</button></div>
+    </div>`;
+}
+function openNewMeetingModal(preDate,preSlot,preRoomId){
+  const roomOpts=DB.rooms.map(r=>`<option value="${r.id}"${r.id===preRoomId?' selected':''}>${esc(r.name)} (cap. ${r.capacity||'?'})</option>`).join('');
+  const preD=preDate||todayStr();
+  const preS=preSlot==null?0:preSlot;
+  window._editMeetingId=null;window._mtype='internal';window._mprivacy='public';window._mmode='physical';window._mnoroom=false;
+  window._mparticipants=[{staff_id:U.id,name:U.name,email:U.email||'',is_external:false,rsvp:'accepted'}];
 
   showModal(`
   <div class="modal-head"><div class="modal-title">Schedule meeting</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
@@ -745,13 +874,25 @@ function openNewMeetingModal(preDate,preSlot){
         <button class="pill" id="pill-ext" onclick="setMType('external')"><i class="ti ti-building" aria-hidden="true"></i> External</button>
       </div>
     </div>
-    <div id="nm-room-field" class="field"><label>Meeting room</label><select id="nm-room">${roomOpts}</select></div>
-    <div id="nm-loc-field" class="field hidden"><label>Location / address</label><input id="nm-loc" placeholder="e.g. City Hall, Block B"/></div>
-    <div class="r2">
-      <div class="field"><label>Date</label><input type="date" id="nm-date" value="${preD}"/></div>
-      <div class="field"><label>Start time</label><select id="nm-start">${timeOpts}</select></div>
+    <div>
+      <div class="section-title">Format</div>
+      <div class="pill-group">
+        <button class="pill active" id="pill-phys" onclick="setMMode('physical')"><i class="ti ti-map-pin" aria-hidden="true"></i> Physical</button>
+        <button class="pill" id="pill-online" onclick="setMMode('online')"><i class="ti ti-video" aria-hidden="true"></i> Online</button>
+        <button class="pill" id="pill-both" onclick="setMMode('both')"><i class="ti ti-device-laptop" aria-hidden="true"></i> Hybrid</button>
+      </div>
     </div>
-    <div class="field"><label>Duration (min. 30 min)</label><select id="nm-dur">${durOpts}</select></div>
+    <div id="nm-internal-place">
+      <label class="toggle-row" style="margin-bottom:8px"><input type="checkbox" id="nm-noroom" onchange="onNoRoomToggle()"/><span>No specific room — enter a location instead</span></label>
+      <div id="nm-room-field" class="field"><label>Meeting room</label><select id="nm-room" onchange="refreshDurationOptions()">${roomOpts}</select></div>
+    </div>
+    <div id="nm-loc-field" class="field hidden"><label id="nm-loc-label">Location</label><input id="nm-loc" placeholder="e.g. City Hall, Block B"/></div>
+    <div id="nm-link-field" class="field hidden"><label>Meeting link</label><input id="nm-link" placeholder="https://meet.example.com/…"/></div>
+    <div class="r2">
+      <div class="field"><label>Date</label><input type="date" id="nm-date" value="${preD}" onchange="refreshDurationOptions()"/></div>
+      <div class="field"><label>Start time</label><select id="nm-start" onchange="refreshDurationOptions()">${startTimeOptions(preS)}</select></div>
+    </div>
+    <div class="field"><label>Duration (min. 30 min)</label><select id="nm-dur">${durationOptions(1,DAY_SLOTS-preS)}</select></div>
     <div>
       <div class="section-title">Privacy</div>
       <div class="pill-group">
@@ -765,9 +906,10 @@ function openNewMeetingModal(preDate,preSlot){
       <div class="section-title">Participants</div>
       <div id="nm-participants" class="stack" style="gap:6px"></div>
       <div class="r2" style="margin-top:8px">
-        <div class="field"><label>Add staff</label><select id="nm-add-staff"><option value="">— select —</option>${DB.staff.filter(s=>s.id!==U.id).map(s=>`<option value="${s.id}">${esc(s.name)} · ${s.sections?esc(s.sections.name):''}</option>`).join('')}</select></div>
+        <div class="field"><label>Add staff</label><select id="nm-add-staff"><option value="">— select —</option>${staffOptionList()}</select></div>
         <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addStaffParticipant()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
       </div>
+      ${groupSelectBlock()}
       <div class="section-title" style="margin-top:10px">External guests</div>
       <div class="r2">
         <div class="field"><label>Name</label><input id="nm-ext-name" placeholder="Guest name"/></div>
@@ -781,30 +923,96 @@ function openNewMeetingModal(preDate,preSlot){
     <button class="btn" onclick="closeModal()">Cancel</button>
     <button class="btn btn-accent" id="nm-save" onclick="saveMeeting()">Schedule</button>
   </div>`);
-  window._mtype='internal';window._mprivacy='public';window._mparticipants=[];
-  // Add self automatically
-  window._mparticipants=[{staff_id:U.id,name:U.name,email:U.email||'',is_external:false,rsvp:'accepted'}];
+  updateModalFields();
   renderParticipantList();
+  refreshDurationOptions();
 }
 
 function setMType(t){
   window._mtype=t;
   document.getElementById('pill-int').className='pill'+(t==='internal'?' active':'');
   document.getElementById('pill-ext').className='pill'+(t==='external'?' active':'');
-  document.getElementById('nm-room-field').classList.toggle('hidden',t!=='internal');
-  document.getElementById('nm-loc-field').classList.toggle('hidden',t!=='external');
+  updateModalFields();
+}
+function setMMode(mode){
+  window._mmode=mode;
+  document.getElementById('pill-phys').className='pill'+(mode==='physical'?' active':'');
+  document.getElementById('pill-online').className='pill'+(mode==='online'?' active':'');
+  document.getElementById('pill-both').className='pill'+(mode==='both'?' active':'');
+  updateModalFields();
 }
 function setPrivacy(p){
   window._mprivacy=p;
   document.getElementById('pill-pub').className='pill'+(p==='public'?' active':'');
   document.getElementById('pill-priv').className='pill'+(p==='private'?' active':'');
 }
-function addStaffParticipant(){
+function onNoRoomToggle(){window._mnoroom=document.getElementById('nm-noroom').checked;updateModalFields();}
+function updateModalFields(){
+  const needsPhys=window._mmode!=='online';
+  const internalPlace=document.getElementById('nm-internal-place');
+  const roomField=document.getElementById('nm-room-field');
+  const locField=document.getElementById('nm-loc-field');
+  const linkField=document.getElementById('nm-link-field');
+  const locLabel=document.getElementById('nm-loc-label');
+  if(!internalPlace)return;
+  linkField.classList.toggle('hidden',!(window._mmode==='online'||window._mmode==='both'));
+  if(window._mtype==='internal'){
+    internalPlace.classList.toggle('hidden',!needsPhys);
+    roomField.classList.toggle('hidden',!needsPhys||window._mnoroom);
+    locField.classList.toggle('hidden',!(needsPhys&&window._mnoroom));
+    if(locLabel)locLabel.textContent='Location';
+  }else{
+    internalPlace.classList.add('hidden');
+    roomField.classList.add('hidden');
+    locField.classList.toggle('hidden',!needsPhys);
+    if(locLabel)locLabel.textContent='Location / address';
+  }
+  refreshDurationOptions();
+}
+
+/* Participant management */
+async function addStaffParticipant(){
   const sel=document.getElementById('nm-add-staff');const id=parseInt(sel.value);if(!id)return;
   if(window._mparticipants.some(p=>p.staff_id===id)){showToast('Already added.');return;}
   const s=DB.staff.find(x=>x.id===id);if(!s)return;
-  window._mparticipants.push({staff_id:id,name:s.name,email:s.email||'',is_external:false,rsvp:'pending'});
+  const p={staff_id:id,name:s.name,email:s.email||'',is_external:false,rsvp:'pending'};
+  window._mparticipants.push(p);
   sel.value='';renderParticipantList();
+  await checkParticipantBusy(p);
+}
+async function addGroupParticipants(){
+  const sel=document.getElementById('nm-add-group');if(!sel)return;
+  const gid=parseInt(sel.value);if(!gid)return;
+  const g=DB.groups.find(x=>x.id===gid);if(!g)return;
+  let added=0;
+  (g.meeting_group_members||[]).forEach(mem=>{
+    const sid=mem.staff_id;
+    if(window._mparticipants.some(p=>p.staff_id===sid))return;
+    const s=DB.staff.find(x=>x.id===sid);if(!s)return;
+    window._mparticipants.push({staff_id:sid,name:s.name,email:s.email||'',is_external:false,rsvp:'pending'});added++;
+  });
+  sel.value='';renderParticipantList();
+  showToast(added?`Added ${added} member(s) from ${g.name}`:'All members already added');
+  for(const p of window._mparticipants){if(!p.is_external&&p.busy===undefined)await checkParticipantBusy(p);}
+}
+async function checkParticipantBusy(p){
+  if(p.is_external||!p.staff_id)return;
+  const dateEl=document.getElementById('nm-date')||document.getElementById('em-date');
+  const startEl=document.getElementById('nm-start'),durEl=document.getElementById('nm-dur');
+  if(!dateEl||!startEl||!durEl||!dateEl.value||!durEl.value)return;
+  const busy=await isStaffBusy(p.staff_id,dateEl.value,parseInt(startEl.value)||0,parseInt(durEl.value)||1,window._editMeetingId||null);
+  p.busy=busy;renderParticipantList();
+  if(busy)showToast(`${p.name} is already booked at this time — added anyway`);
+}
+async function isStaffBusy(staffId,date,start,dur,excludeId){
+  let ms=[];
+  try{ms=await GET('meetings',`select=id,start_slot,duration,created_by,participants(staff_id,rsvp)&date=eq.${date}`);}catch(e){return false;}
+  return ms.some(m=>{
+    if(m.id===excludeId)return false;
+    if(!slotsOverlap(start,dur,m.start_slot,m.duration))return false;
+    if(m.created_by===staffId)return true;
+    return (m.participants||[]).some(p=>p.staff_id===staffId&&p.rsvp!=='declined');
+  });
 }
 function addExtParticipant(){
   const name=document.getElementById('nm-ext-name').value.trim();
@@ -816,67 +1024,83 @@ function addExtParticipant(){
 }
 function removeParticipant(idx){window._mparticipants.splice(idx,1);renderParticipantList();}
 function renderParticipantList(){
-  const c=document.getElementById('nm-participants');
+  const c=document.getElementById('nm-participants');if(!c)return;
   c.innerHTML=window._mparticipants.map((p,i)=>{
     const isSelf=p.staff_id===U.id;
     return`<div class="prow">
       <div class="prow-avatar" style="background:${p.is_external?'var(--ext-bg)':'var(--accent-bg)'};color:${p.is_external?'var(--ext-ink)':'var(--accent-ink)'}">${initials(p.name)}</div>
-      <div style="flex:1;min-width:0"><div class="prow-name">${esc(p.name)}</div><div class="prow-role">${p.is_external?'External guest':''}</div></div>
-      ${p.rsvp==='accepted'?'<span class="badge b-good">You</span>':''}
+      <div style="flex:1;min-width:0"><div class="prow-name">${esc(p.name)}</div><div class="prow-role">${p.is_external?'External guest':(p.busy?'<span style="color:var(--warn-ink)">⚠ Busy at this time</span>':'')}</div></div>
+      ${p.rsvp==='accepted'&&isSelf?'<span class="badge b-good">You</span>':''}
       ${!isSelf?`<button class="prow-rm" onclick="removeParticipant(${i})"><i class="ti ti-x" aria-hidden="true"></i></button>`:''}
     </div>`;
   }).join('');
+}
+
+/* Collect place fields from the open modal */
+function collectPlace(){
+  const mode=window._mmode||'physical';
+  const needsPhys=mode!=='online';
+  let location='',room_id=null,no_room=false;
+  const linkEl=document.getElementById('nm-link');
+  const meeting_link=(mode==='online'||mode==='both')&&linkEl?linkEl.value.trim()||null:null;
+  if(window._mtype==='internal'){
+    if(needsPhys){
+      if(window._mnoroom){no_room=true;const locEl=document.getElementById('nm-loc');location=locEl?locEl.value.trim():'';}
+      else{const roomEl=document.getElementById('nm-room');room_id=roomEl?parseInt(roomEl.value)||null:null;const r=DB.rooms.find(x=>x.id===room_id);location=r?r.name:'';}
+    }
+  }else{
+    if(needsPhys){const locEl=document.getElementById('nm-loc');location=locEl?locEl.value.trim():'';}
+  }
+  return{mode,location,room_id,no_room,meeting_link};
 }
 
 async function saveMeeting(){
   const title=document.getElementById('nm-title').value.trim();
   const date=document.getElementById('nm-date').value;
   const start_slot=parseInt(document.getElementById('nm-start').value);
-  const duration=parseInt(document.getElementById('nm-dur').value);
+  const durVal=document.getElementById('nm-dur').value;
+  const duration=parseInt(durVal);
   const notes=document.getElementById('nm-notes').value.trim();
   const err=document.getElementById('nm-err');
   if(!title){showAlert(err,'Enter a title.');return;}
   if(!date){showAlert(err,'Pick a date.');return;}
+  if(!durVal||!duration){showAlert(err,'No free time available for the selected room/slot. Pick another time or room.');return;}
   const type=window._mtype||'internal';
-  let location='',room_id=null;
-  if(type==='internal'){room_id=parseInt(document.getElementById('nm-room').value);const r=DB.rooms.find(x=>x.id===room_id);location=r?r.name:'';}
-  else{location=document.getElementById('nm-loc').value.trim();}
-  // Conflict check for room
-  if(type==='internal'&&room_id){
+  const{mode,location,room_id,no_room,meeting_link}=collectPlace();
+  // Room conflict pre-booking check (Issue 5)
+  if(type==='internal'&&room_id&&mode!=='online'){
     const existing=await GET('meetings',`select=id,start_slot,duration&date=eq.${date}&room_id=eq.${room_id}&type=eq.internal`);
-    const conflict=existing.filter(m=>{for(let i=0;i<duration;i++){const s=start_slot+i;if(s>=m.start_slot&&s<m.start_slot+m.duration)return true;}return false;});
+    const conflict=existing.filter(m=>slotsOverlap(start_slot,duration,m.start_slot,m.duration));
     if(conflict.length){showAlert(err,'This room is already booked for that time. Choose a different room or time.');return;}
   }
   const btn=document.getElementById('nm-save');btn.disabled=true;btn.textContent='Saving…';
   try{
     const mRows=await POST('meetings',{
-      title,type,privacy:window._mprivacy||'public',date,start_slot,duration,notes,location,
+      title,type,meeting_mode:mode,meeting_link,privacy:window._mprivacy||'public',date,start_slot,duration,notes,location,no_room,
       room_id:room_id||null,section_id:U.section_id||null,section_name:U.sections?U.sections.name:null,
       created_by:U.id,created_by_name:U.name,created_by_svc:U.svc_no
     });
     const mRow=Array.isArray(mRows)?mRows[0]:mRows;
-    // Insert participants
     if(window._mparticipants.length){
       await Promise.all(window._mparticipants.map(p=>POST('participants',{meeting_id:mRow.id,staff_id:p.staff_id||null,name:p.name,email:p.email||null,is_external:p.is_external,rsvp:p.rsvp})));
     }
-    closeModal();showToast('Meeting scheduled');renderCal();renderMeetingsList();
+    closeModal();showToast('Meeting scheduled');refreshActiveViews();
   }catch(e){showAlert(err,'Error: '+e.message);btn.disabled=false;btn.textContent='Schedule';}
 }
 
 /* =================== VIEW MEETING MODAL =================== */
 function viewMeetingModal(m){
   const canSee=canSeeMeetingDetails(m);
-  const sameSection=U.sections&&U.sections.name===m.section_name;
-  const isCreator=m.created_by===U.id;
-  const canEdit=U.role==='admin'||sameSection||isCreator;
-  // Past meetings locked to admin only
+  const manage=canManage(m);
   const today=new Date();today.setHours(0,0,0,0);
   const mDate=new Date(m.date+'T00:00:00');
-  const isPast=mDate<today;
-  const canEditNow=isPast?(U.role==='admin'):(canEdit);
+  const isPast=mDate<today;const isToday=mDate.getTime()===today.getTime();
+  const canEditNow=isPast?(U.role==='admin'):manage;
+  const canMarkAttendance=manage&&(isPast||isToday);
   const c=meetingColor(m);
   const ps=m.participants||[];
   const myRsvp=ps.find(p=>p.staff_id===U.id);
+  const mode=m.meeting_mode||'physical';
 
   showModal(`
   <div style="height:4px;background:${c.tx}"></div>
@@ -885,6 +1109,7 @@ function viewMeetingModal(m){
       <div class="modal-title">${canSee?esc(m.title):'Private meeting'}</div>
       <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
         <span class="tag ${m.type==='external'?'tag-ext':'tag-int'}">${m.type==='internal'?'<i class="ti ti-door" aria-hidden="true"></i> Internal':'<i class="ti ti-building" aria-hidden="true"></i> External'}</span>
+        <span class="tag tag-mode"><i class="ti ${MODE_ICON[mode]}" aria-hidden="true"></i> ${MODE_LABEL[mode]}</span>
         <span class="tag ${m.privacy==='private'?'tag-priv':'tag-pub'}">${m.privacy==='private'?'<i class="ti ti-eye-off" aria-hidden="true"></i> Private':'<i class="ti ti-eye" aria-hidden="true"></i> Public'}</span>
       </div>
     </div>
@@ -896,17 +1121,24 @@ function viewMeetingModal(m){
       <div><div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Time</div><div class="mono" style="font-weight:700">${fTime(m.start_slot)} – ${fTime(m.start_slot+m.duration)}</div></div>
     </div>
     ${canSee?`
-    <div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">${m.type==='internal'?'Room':'Location'}</div><div style="font-weight:600">${esc(m.location||'—')}</div></div>
+    ${(mode!=='online'&&m.location)?`<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">${m.type==='internal'&&!m.no_room?'Room':'Location'}</div><div style="font-weight:600">${esc(m.location)}</div></div>`:''}
+    ${(mode==='online'||mode==='both')?`<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Meeting link</div>${m.meeting_link?`<a class="btn btn-sm btn-accent" href="${esc(m.meeting_link)}" target="_blank" rel="noopener"><i class="ti ti-video" aria-hidden="true"></i>Join online</a>`:'<div style="color:var(--faint)">No link shared yet</div>'}</div>`:''}
     ${m.notes?`<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Notes</div><div style="color:var(--dim);font-size:12.5px">${esc(m.notes)}</div></div>`:''}
     <div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Organised by</div><div style="font-weight:600">${esc(m.created_by_name||'—')} <span class="tag" style="background:${getSC(m.section_name).bg};color:${getSC(m.section_name).tx}">${esc(m.section_name||'')}</span></div></div>
     <div class="hr"></div>
-    <div class="section-title">Participants (${ps.length})</div>
-    <div class="stack" style="gap:5px;max-height:180px;overflow-y:auto">
-    ${ps.map(p=>`<div class="prow">
+    <div class="section-title">Participants (${ps.length})${canMarkAttendance?' · mark attendance':''}</div>
+    <div class="stack" style="gap:5px;max-height:220px;overflow-y:auto">
+    ${ps.map(p=>{
+      const att=p.attendance;
+      return`<div class="prow">
       <div class="prow-avatar" style="background:${p.is_external?'var(--ext-bg)':'var(--accent-bg)'};color:${p.is_external?'var(--ext-ink)':'var(--accent-ink)'}">${initials(p.name)}</div>
-      <div style="flex:1;min-width:0"><div class="prow-name">${esc(p.name)}</div>${p.rsvp_note?`<div class="prow-role">${esc(p.rsvp_note)}</div>`:''}</div>
-      <span class="prow-rsvp"><span class="rsvp-dot rsvp-${p.rsvp}"></span>${p.rsvp}</span>
-    </div>`).join('')}
+      <div style="flex:1;min-width:0"><div class="prow-name">${esc(p.name)}</div><div class="prow-role"><span class="rsvp-dot rsvp-${p.rsvp}" style="display:inline-block;margin-right:4px"></span>${p.rsvp}${p.rsvp_note?' · '+esc(p.rsvp_note):''}</div></div>
+      ${canMarkAttendance?`<div class="att-seg">
+        <button class="att-btn ${att==='present'?'on-present':''}" title="Present" onclick="markAttendance(${p.id},'present',${m.id})">P</button>
+        <button class="att-btn ${att==='late'?'on-late':''}" title="Late" onclick="markAttendance(${p.id},'late',${m.id})">L</button>
+        <button class="att-btn ${att==='absent'?'on-absent':''}" title="Absent" onclick="markAttendance(${p.id},'absent',${m.id})">A</button>
+      </div>`:(att?`<span class="badge ${att==='present'?'b-good':att==='late'?'b-warn':'b-bad'}">${att}</span>`:'')}
+    </div>`;}).join('')}
     </div>`:'<div class="alert a-warn"><i class="ti ti-eye-off" aria-hidden="true"></i>Details are private — only visible to participants.</div>'}
     ${myRsvp&&myRsvp.rsvp==='pending'?`
     <div class="hr"></div>
@@ -917,61 +1149,63 @@ function viewMeetingModal(m){
     </div>
     <div class="field" style="margin-top:8px"><label>Note (optional)</label><input id="rsvp-note" placeholder="e.g. Will join at 10:30"/></div>`:
     (myRsvp?`<div class="hr"></div><div class="alert ${myRsvp.rsvp==='accepted'?'a-good':'a-bad'}"><i class="ti ti-${myRsvp.rsvp==='accepted'?'check':'x'}" aria-hidden="true"></i>You responded: <strong>${myRsvp.rsvp}</strong>${myRsvp.rsvp_note?' — '+esc(myRsvp.rsvp_note):''} <button class="btn btn-sm btn-ghost" onclick="rsvpChange(${m.id})" style="margin-left:8px;padding:3px 8px;font-size:11px">Change</button></div>`:'')}
-    ${!canSee?'':`${canEditNow?`<div class="hr"></div><div class="section-title">Email participants</div>
-    <div class="field"><label>Message</label><textarea id="email-body" placeholder="Type your message…" style="min-height:60px"></textarea></div>
-    <button class="btn btn-sm" onclick="sendEmailNotification(${m.id})"><i class="ti ti-mail" aria-hidden="true"></i>Send email to all participants</button>`:''}`}
-    ${isPast&&!U.role==='admin'?'<div class="alert a-warn" style="margin-top:10px"><i class="ti ti-lock" aria-hidden="true"></i>Past meetings can only be edited by admin.</div>':''}
+    ${(canSee&&canEditNow)?`<div class="hr"></div><div class="section-title">Notify participants</div>
+    <div class="field"><label>Message</label><textarea id="email-body" placeholder="Type a message…" style="min-height:60px"></textarea></div>
+    <div class="r2" style="margin-top:8px">
+      <button class="btn btn-sm" onclick="sendMeetingComm(${m.id},'message')"><i class="ti ti-mail" aria-hidden="true"></i>Send message</button>
+      <button class="btn btn-sm btn-warn" onclick="sendMeetingComm(${m.id},'reminder')"><i class="ti ti-bell-ringing" aria-hidden="true"></i>Send reminder</button>
+    </div>`:''}
+    ${isPast&&U.role!=='admin'?'<div class="alert a-warn" style="margin-top:10px"><i class="ti ti-lock" aria-hidden="true"></i>Past meetings can only be edited by admin.</div>':''}
   </div>
   <div class="modal-foot">
     <button class="btn" onclick="closeModal()">Close</button>
     ${canEditNow?`<button class="btn btn-warn" onclick="openEditMeetingModal(${m.id})"><i class="ti ti-edit" aria-hidden="true"></i>Edit</button>
-    <button class="btn btn-danger" onclick="deleteMeeting(${m.id})"><i class="ti ti-trash" aria-hidden="true"></i>Delete</button>`:''}
+    <button class="btn btn-danger" onclick="openCancelModal(${m.id})"><i class="ti ti-trash" aria-hidden="true"></i>Cancel meeting</button>`:''}
   </div>`);
+}
+
+async function markAttendance(pid,status,meetingId){
+  try{
+    await PATCH('participants',`id=eq.${pid}`,{attendance:status,attendance_marked_by:U.id,attendance_marked_at:new Date().toISOString()});
+    showToast('Attendance: '+status);
+    const rows=await GET('meetings',`select=*,participants(*)&id=eq.${meetingId}`);
+    if(rows[0])viewMeetingModal(rows[0]);
+  }catch(e){alert(e.message);}
 }
 
 async function rsvp(meetingId,response){
   const note=(document.getElementById('rsvp-note')||{}).value||'';
-  const me=DB.staff.find(s=>s.id===U.id);
   try{
-    // Find participant row
     const parts=await GET('participants',`select=*&meeting_id=eq.${meetingId}&staff_id=eq.${U.id}`);
-    if(parts.length){
-      await PATCH('participants',`id=eq.${parts[0].id}`,{rsvp:response,rsvp_note:note});
-    } else {
-      await POST('participants',{meeting_id:meetingId,staff_id:U.id,name:U.name,email:U.email||null,is_external:false,rsvp:response,rsvp_note:note});
-    }
+    if(parts.length){await PATCH('participants',`id=eq.${parts[0].id}`,{rsvp:response,rsvp_note:note});}
+    else{await POST('participants',{meeting_id:meetingId,staff_id:U.id,name:U.name,email:U.email||null,is_external:false,rsvp:response,rsvp_note:note});}
     showToast(response==='accepted'?'You accepted the invite':'You declined the invite');
-    closeModal();renderCal();renderNotifications();
+    closeModal();refreshActiveViews();
   }catch(e){alert(e.message);}
 }
-
 function rsvpChange(meetingId){
-  // Reopen the RSVP section
-  const parts=document.querySelectorAll('.prow-rsvp');// just re-render modal
-  // Reload meeting and reshow
   GET('meetings',`select=*,participants(*)&id=eq.${meetingId}`).then(rows=>{if(rows[0])viewMeetingModal(rows[0]);});
 }
 
+/* =================== EDIT MEETING =================== */
 async function openEditMeetingModal(meetingId){
   const rows=await GET('meetings',`select=*,participants(*)&id=eq.${meetingId}`);
   if(!rows.length)return;editMeetingModal(rows[0]);
 }
 function editMeetingModal(m){
   const today=new Date();today.setHours(0,0,0,0);
-  const mDate=new Date(m.date+'T00:00:00');
-  const isPast=mDate<today;
+  const isPast=new Date(m.date+'T00:00:00')<today;
   if(isPast&&U.role!=='admin'){showToast('Only admin can edit past meetings.');closeModal();return;}
-  const sameSection=U.sections&&U.sections.name===m.section_name;
-  if(!sameSection&&m.created_by!==U.id&&U.role!=='admin'){showToast('Only the organising section can edit this meeting.');closeModal();return;}
-  const roomOpts=DB.rooms.map(r=>`<option value="${r.id}"${r.id===m.room_id?' selected':''}>${esc(r.name)}</option>`).join('');
-  let timeOpts='';for(let i=0;i<48;i++){const h=Math.floor(i/2);const mm=i%2===0?'00':'30';timeOpts+=`<option value="${i}"${i===m.start_slot?' selected':''}>${String(h).padStart(2,'0')}:${mm}</option>`;}
-  let durOpts='';for(let i=1;i<=32;i++){const mn=i*30;durOpts+=`<option value="${i}"${i===m.duration?' selected':''}>${mn<60?mn+' min':Math.floor(mn/60)+'h'+(mn%60?' '+mn%60+'min':'')}</option>`;}
+  if(!canManage(m)){showToast('Only the organising section can edit this meeting.');closeModal();return;}
+  const roomOpts=DB.rooms.map(r=>`<option value="${r.id}"${r.id===m.room_id?' selected':''}>${esc(r.name)} (cap. ${r.capacity||'?'})</option>`).join('');
   const ps=m.participants||[];
-  window._mparticipants=[...ps];
+  window._editMeetingId=m.id;
+  window._mtype=m.type;window._mprivacy=m.privacy||'public';window._mmode=m.meeting_mode||'physical';window._mnoroom=!!m.no_room;
+  window._mparticipants=ps.map(p=>({staff_id:p.staff_id,name:p.name,email:p.email,is_external:p.is_external,rsvp:p.rsvp,rsvp_note:p.rsvp_note}));
   showModal(`
   <div class="modal-head"><div class="modal-title">Edit meeting</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
   <div class="modal-body"><div class="stack">
-    <div class="field"><label>Title</label><input id="em-title" value="${esc(m.title)}"/></div>
+    <div class="field"><label>Title</label><input id="nm-title" value="${esc(m.title)}"/></div>
     <div>
       <div class="section-title">Type</div>
       <div class="pill-group">
@@ -979,13 +1213,25 @@ function editMeetingModal(m){
         <button class="pill${m.type==='external'?' active':''}" id="pill-ext" onclick="setMType('external')"><i class="ti ti-building" aria-hidden="true"></i> External</button>
       </div>
     </div>
-    <div id="nm-room-field" class="${m.type!=='internal'?'field hidden':'field'}"><label>Room</label><select id="nm-room">${roomOpts}</select></div>
-    <div id="nm-loc-field" class="${m.type==='external'?'field':'field hidden'}"><label>Location</label><input id="nm-loc" value="${esc(m.location||'')}"/></div>
-    <div class="r2">
-      <div class="field"><label>Date</label><input type="date" id="em-date" value="${m.date}"/></div>
-      <div class="field"><label>Start</label><select id="nm-start">${timeOpts}</select></div>
+    <div>
+      <div class="section-title">Format</div>
+      <div class="pill-group">
+        <button class="pill${m.meeting_mode!=='online'&&m.meeting_mode!=='both'?' active':''}" id="pill-phys" onclick="setMMode('physical')"><i class="ti ti-map-pin" aria-hidden="true"></i> Physical</button>
+        <button class="pill${m.meeting_mode==='online'?' active':''}" id="pill-online" onclick="setMMode('online')"><i class="ti ti-video" aria-hidden="true"></i> Online</button>
+        <button class="pill${m.meeting_mode==='both'?' active':''}" id="pill-both" onclick="setMMode('both')"><i class="ti ti-device-laptop" aria-hidden="true"></i> Hybrid</button>
+      </div>
     </div>
-    <div class="field"><label>Duration</label><select id="nm-dur">${durOpts}</select></div>
+    <div id="nm-internal-place">
+      <label class="toggle-row" style="margin-bottom:8px"><input type="checkbox" id="nm-noroom" ${m.no_room?'checked':''} onchange="onNoRoomToggle()"/><span>No specific room — enter a location instead</span></label>
+      <div id="nm-room-field" class="field"><label>Meeting room</label><select id="nm-room" onchange="refreshDurationOptions()">${roomOpts}</select></div>
+    </div>
+    <div id="nm-loc-field" class="field hidden"><label id="nm-loc-label">Location</label><input id="nm-loc" value="${esc(m.no_room||m.type==='external'?(m.location||''):'')}"/></div>
+    <div id="nm-link-field" class="field hidden"><label>Meeting link</label><input id="nm-link" value="${esc(m.meeting_link||'')}" placeholder="https://meet.example.com/…"/></div>
+    <div class="r2">
+      <div class="field"><label>Date</label><input type="date" id="em-date" value="${m.date}" onchange="refreshDurationOptions()"/></div>
+      <div class="field"><label>Start</label><select id="nm-start" onchange="refreshDurationOptions()">${startTimeOptions(m.start_slot)}</select></div>
+    </div>
+    <div class="field"><label>Duration</label><select id="nm-dur">${durationOptions(m.duration,DAY_SLOTS-m.start_slot)}</select></div>
     <div>
       <div class="section-title">Privacy</div>
       <div class="pill-group">
@@ -998,75 +1244,113 @@ function editMeetingModal(m){
       <div class="section-title">Participants</div>
       <div id="nm-participants" class="stack" style="gap:6px"></div>
       <div class="r2" style="margin-top:8px">
-        <div class="field"><label>Add staff</label><select id="nm-add-staff"><option value="">— select —</option>${DB.staff.map(s=>`<option value="${s.id}">${esc(s.name)} · ${s.sections?esc(s.sections.name):''}</option>`).join('')}</select></div>
+        <div class="field"><label>Add staff</label><select id="nm-add-staff"><option value="">— select —</option>${staffOptionList()}</select></div>
         <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addStaffParticipant()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
       </div>
+      ${groupSelectBlock()}
       <div class="r2" style="margin-top:6px">
         <div class="field"><label>External name</label><input id="nm-ext-name" placeholder="Guest name"/></div>
         <div class="field"><label>Email</label><input type="email" id="nm-ext-email"/></div>
       </div>
       <button class="btn btn-sm" style="margin-top:5px" onclick="addExtParticipant()"><i class="ti ti-user-plus" aria-hidden="true"></i>Add guest</button>
     </div>
+    <div class="hr"></div>
+    <label class="toggle-row"><input type="checkbox" id="em-notify" checked/><span>Notify attendees of these changes</span></label>
+    <div class="field"><label>Reason / note (optional)</label><input id="em-reason" placeholder="e.g. Postponed due to room conflict"/></div>
     <div id="nm-err" class="alert a-bad hidden"></div>
   </div></div>
   <div class="modal-foot">
     <button class="btn" onclick="closeModal()">Cancel</button>
     <button class="btn btn-accent" id="nm-save" onclick="updateMeeting(${m.id})">Save changes</button>
   </div>`);
-  window._mtype=m.type;window._mprivacy=m.privacy||'public';
+  updateModalFields();
   renderParticipantList();
+  refreshDurationOptions();
 }
 
 async function updateMeeting(meetingId){
-  const title=document.getElementById('em-title').value.trim();
+  const title=document.getElementById('nm-title').value.trim();
   const date=document.getElementById('em-date').value;
   const start_slot=parseInt(document.getElementById('nm-start').value);
-  const duration=parseInt(document.getElementById('nm-dur').value);
+  const durVal=document.getElementById('nm-dur').value;
+  const duration=parseInt(durVal);
   const notes=document.getElementById('nm-notes').value.trim();
   const err=document.getElementById('nm-err');
   if(!title){showAlert(err,'Enter a title.');return;}
+  if(!durVal||!duration){showAlert(err,'No free time available for the selected room/slot.');return;}
   const type=window._mtype;
-  let location='',room_id=null;
-  if(type==='internal'){room_id=parseInt(document.getElementById('nm-room').value);const r=DB.rooms.find(x=>x.id===room_id);location=r?r.name:'';}
-  else{location=document.getElementById('nm-loc').value.trim();}
+  const{mode,location,room_id,no_room,meeting_link}=collectPlace();
+  if(type==='internal'&&room_id&&mode!=='online'){
+    const existing=await GET('meetings',`select=id,start_slot,duration&date=eq.${date}&room_id=eq.${room_id}&type=eq.internal`);
+    const conflict=existing.filter(m=>m.id!==meetingId&&slotsOverlap(start_slot,duration,m.start_slot,m.duration));
+    if(conflict.length){showAlert(err,'This room is already booked for that time.');return;}
+  }
+  const notify=document.getElementById('em-notify').checked;
+  const reason=document.getElementById('em-reason').value.trim();
   const btn=document.getElementById('nm-save');btn.disabled=true;btn.textContent='Saving…';
   try{
-    await PATCH('meetings',`id=eq.${meetingId}`,{title,type,privacy:window._mprivacy,date,start_slot,duration,notes,location,room_id:room_id||null});
-    // Sync participants: delete all then reinsert
+    await PATCH('meetings',`id=eq.${meetingId}`,{title,type,meeting_mode:mode,meeting_link,privacy:window._mprivacy,date,start_slot,duration,notes,location,no_room,room_id:room_id||null});
     await DEL('participants',`meeting_id=eq.${meetingId}`);
     if(window._mparticipants.length){
-      await Promise.all(window._mparticipants.map(p=>POST('participants',{meeting_id:meetingId,staff_id:p.staff_id||null,name:p.name,email:p.email||null,is_external:p.is_external||false,rsvp:p.rsvp||'pending'})));
+      await Promise.all(window._mparticipants.map(p=>POST('participants',{meeting_id:meetingId,staff_id:p.staff_id||null,name:p.name,email:p.email||null,is_external:p.is_external||false,rsvp:p.rsvp||'pending',rsvp_note:p.rsvp_note||null})));
     }
-    closeModal();showToast('Meeting updated');renderCal();renderMeetingsList();
+    if(notify){await sendMeetingComm(meetingId,'update',reason,true);}
+    closeModal();showToast('Meeting updated');refreshActiveViews();
   }catch(e){showAlert(err,'Error: '+e.message);btn.disabled=false;btn.textContent='Save changes';}
 }
 
-async function deleteMeeting(id){
-  if(!confirm('Delete this meeting? This cannot be undone.'))return;
-  try{await DEL('meetings',`id=eq.${id}`);closeModal();showToast('Meeting deleted');renderCal();renderMeetingsList();}
-  catch(e){alert(e.message);}
+/* =================== CANCEL MEETING (+notify) =================== */
+async function openCancelModal(meetingId){
+  const rows=await GET('meetings',`select=*,participants(*)&id=eq.${meetingId}`);
+  if(!rows.length)return;const m=rows[0];
+  if(!(new Date(m.date+'T00:00:00')<new Date(new Date().setHours(0,0,0,0))?U.role==='admin':canManage(m))){showToast('Not allowed.');return;}
+  showModal(`
+  <div class="modal-head"><div class="modal-title">Cancel meeting</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+  <div class="modal-body"><div class="stack">
+    <div class="alert a-bad"><i class="ti ti-alert-triangle" aria-hidden="true"></i>This will permanently delete "<strong>${esc(m.title)}</strong>". This cannot be undone.</div>
+    <label class="toggle-row"><input type="checkbox" id="cx-notify" checked/><span>Notify attendees of the cancellation</span></label>
+    <div class="field"><label>Reason (optional)</label><textarea id="cx-reason" placeholder="e.g. Cancelled — will reschedule next week"></textarea></div>
+    <div id="cx-err" class="alert a-bad hidden"></div>
+  </div></div>
+  <div class="modal-foot">
+    <button class="btn" onclick="closeModal()">Keep meeting</button>
+    <button class="btn btn-danger" id="cx-btn" onclick="confirmCancel(${meetingId})"><i class="ti ti-trash" aria-hidden="true"></i>Cancel meeting</button>
+  </div>`);
+}
+async function confirmCancel(meetingId){
+  const notify=document.getElementById('cx-notify').checked;
+  const reason=document.getElementById('cx-reason').value.trim();
+  const btn=document.getElementById('cx-btn');btn.disabled=true;btn.textContent='Cancelling…';
+  try{
+    if(notify){await sendMeetingComm(meetingId,'cancellation',reason,true,true);}
+    await DEL('meetings',`id=eq.${meetingId}`);
+    closeModal();showToast('Meeting cancelled');refreshActiveViews();
+  }catch(e){showAlert(document.getElementById('cx-err'),'Error: '+e.message);btn.disabled=false;btn.textContent='Cancel meeting';}
 }
 
-/* =================== EMAIL NOTIFICATION =================== */
-async function sendEmailNotification(meetingId){
-  const body=document.getElementById('email-body').value.trim();
-  if(!body){showToast('Enter a message.');return;}
-  // Gather participants with emails
+/* =================== NOTIFY / EMAIL =================== */
+async function sendMeetingComm(meetingId,type,extra,silent,skipLog){
+  let bodyExtra=extra;
+  if(type==='message'&&!silent){const el=document.getElementById('email-body');bodyExtra=el?el.value.trim():'';if(!bodyExtra){showToast('Enter a message.');return;}}
   const parts=await GET('participants',`select=*&meeting_id=eq.${meetingId}`);
   const withEmail=parts.filter(p=>p.email);
-  if(!withEmail.length){showToast('No participants have email addresses.');return;}
-  // Build mailto links for each (since we have no server-side email sending, open mailto)
-  const emails=withEmail.map(p=>p.email).join(',');
-  const meeting=await GET('meetings',`select=title,date&id=eq.${meetingId}`);
-  const m=meeting[0]||{};
-  const subject=`Meeting Invitation: ${m.title||''}`;
-  const mailtoLink=`mailto:${encodeURIComponent(emails)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  // Log notification
-  try{
-    await Promise.all(withEmail.map(p=>POST('notifications',{meeting_id:meetingId,participant_id:p.id,subject,body,status:'sent'})));
-  }catch(e_){}
-  window.open(mailtoLink,'_blank');
-  showToast(`Email opened for ${withEmail.length} participant(s)`);
+  const mrows=await GET('meetings',`select=*&id=eq.${meetingId}`);const m=mrows[0]||{};
+  const when=`${new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})} ${fTime(m.start_slot)}–${fTime(m.start_slot+m.duration)}`;
+  const where=m.meeting_link?`Link: ${m.meeting_link}`:(m.location||'');
+  let subject,intro;
+  if(type==='reminder'){subject=`Reminder: ${m.title}`;intro=`This is a reminder for "${m.title}".`;}
+  else if(type==='update'){subject=`Updated: ${m.title}`;intro=`The meeting "${m.title}" has been updated.`;}
+  else if(type==='cancellation'){subject=`Cancelled: ${m.title}`;intro=`The meeting "${m.title}" has been cancelled.`;}
+  else{subject=`Regarding: ${m.title}`;intro=`Regarding the meeting "${m.title}".`;}
+  const body=`${intro}\n\nWhen: ${when}\n${where?where+'\n':''}${bodyExtra?'\n'+bodyExtra+'\n':''}\n— ${U.name}`;
+  if(!skipLog){
+    try{await Promise.all(withEmail.map(p=>POST('notifications',{meeting_id:meetingId,participant_id:p.id,type:(type==='message'?'invitation':type),subject,body,status:'sent'})));}catch(e){}
+  }
+  if(withEmail.length){
+    const emails=withEmail.map(p=>p.email).join(',');
+    window.open(`mailto:${encodeURIComponent(emails)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,'_blank');
+    showToast(`Email opened for ${withEmail.length} attendee(s)`);
+  }else if(!silent){showToast('No attendees have email addresses.');}
 }
 
 /* =================== MEETINGS LIST =================== */
@@ -1077,23 +1361,25 @@ async function renderMeetingsList(){
     return m.participants&&m.participants.some(p=>p.staff_id===U.id);
   });
   allMeetingsCache=myMeetings;
-  filterMeetings(meetingFilter,null);
+  const activeBtn=document.querySelector(`.pill[data-filter="${meetingFilter}"]`);
+  filterMeetings(meetingFilter,activeBtn);
 }
 function filterMeetings(filter,btn){
   meetingFilter=filter;
   document.querySelectorAll('.pill[data-filter]').forEach(p=>p.classList.remove('active'));
   if(btn)btn.classList.add('active');
-  const today=new Date();today.setHours(0,0,0,0);
+  const today=new Date();today.setHours(0,0,0,0);const ts=todayStr();
   let list=[...allMeetingsCache];
   if(filter==='internal')list=list.filter(m=>m.type==='internal');
   else if(filter==='external')list=list.filter(m=>m.type==='external');
+  else if(filter==='today')list=list.filter(m=>m.date===ts);
   else if(filter==='upcoming')list=list.filter(m=>new Date(m.date+'T00:00:00')>=today);
   else if(filter==='past')list=list.filter(m=>new Date(m.date+'T00:00:00')<today);
   list.sort((a,b)=>a.date===b.date?a.start_slot-b.start_slot:a.date<b.date?1:-1);
   const container=document.getElementById('meetings-list');
   if(!list.length){container.innerHTML='<div class="alert a-info"><i class="ti ti-calendar-off" aria-hidden="true"></i>No meetings found.</div>';return;}
   container.innerHTML=list.map(m=>{
-    const c=meetingColor(m);const canSee=canSeeMeetingDetails(m);
+    const c=meetingColor(m);const canSee=canSeeMeetingDetails(m);const mode=m.meeting_mode||'physical';
     const myP=(m.participants||[]).find(p=>p.staff_id===U.id);
     const rsvpDot=myP?`<span class="rsvp-dot rsvp-${myP.rsvp}" style="display:inline-block"></span>`:'';
     return`<div class="mcard" onclick="viewMeetingAndLoad(${m.id})">
@@ -1106,6 +1392,7 @@ function filterMeetings(filter,btn){
         <div class="mcard-meta">
           <span><i class="ti ti-calendar" aria-hidden="true"></i>${new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>
           <span class="mono"><i class="ti ti-clock" aria-hidden="true"></i>${fTime(m.start_slot)} – ${fTime(m.start_slot+m.duration)}</span>
+          <span><i class="ti ${MODE_ICON[mode]}" aria-hidden="true"></i>${MODE_LABEL[mode]}</span>
           ${canSee&&m.location?`<span><i class="ti ti-${m.type==='external'?'building':'door'}" aria-hidden="true"></i>${esc(m.location)}</span>`:''}
           ${rsvpDot}
         </div>
@@ -1118,14 +1405,21 @@ async function viewMeetingAndLoad(id){
   if(rows[0])viewMeetingModal(rows[0]);
 }
 
+/* refresh whichever views are visible */
+function refreshActiveViews(){
+  if(!document.getElementById('tab-calendar').classList.contains('hidden'))renderCal();
+  if(!document.getElementById('tab-rooms').classList.contains('hidden'))renderRooms();
+  if(!document.getElementById('tab-meetings').classList.contains('hidden'))renderMeetingsList();
+  if(!document.getElementById('tab-notif').classList.contains('hidden'))renderNotifications();
+}
+
 /* =================== NOTIFICATIONS =================== */
 async function renderNotifications(){
   const parts=await GET('participants',`select=*,meetings(*)&staff_id=eq.${U.id}&rsvp=eq.pending`);
   const container=document.getElementById('notif-list');
   if(!parts.length){container.innerHTML='<div class="alert a-good"><i class="ti ti-check" aria-hidden="true"></i>All caught up! No pending invitations.</div>';return;}
   container.innerHTML=parts.map(p=>{
-    const m=p.meetings;if(!m)return'';
-    const c=meetingColor(m);
+    const m=p.meetings;if(!m)return'';const mode=m.meeting_mode||'physical';
     return`<div class="panel" style="overflow:visible">
       <div class="panel-head">
         <div class="panel-title"><i class="ti ti-calendar-event" aria-hidden="true"></i>${esc(m.title)}</div>
@@ -1135,7 +1429,8 @@ async function renderNotifications(){
         <div class="mcard-meta" style="margin-bottom:12px">
           <span><i class="ti ti-calendar" aria-hidden="true"></i>${new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>
           <span class="mono"><i class="ti ti-clock" aria-hidden="true"></i>${fTime(m.start_slot)} – ${fTime(m.start_slot+m.duration)}</span>
-          <span><i class="ti ti-${m.type==='external'?'building':'door'}" aria-hidden="true"></i>${esc(m.location||'')}</span>
+          <span><i class="ti ${MODE_ICON[mode]}" aria-hidden="true"></i>${MODE_LABEL[mode]}</span>
+          ${m.location?`<span><i class="ti ti-${m.type==='external'?'building':'door'}" aria-hidden="true"></i>${esc(m.location)}</span>`:''}
         </div>
         <div class="field" style="margin-bottom:8px"><label>Your note (optional)</label><input id="rsvp-note-${p.id}" placeholder="e.g. Will join at 10:30"/></div>
         <div class="r2">
@@ -1152,13 +1447,14 @@ async function rsvpFromNotif(meetingId,partId,response){
   try{
     await PATCH('participants',`id=eq.${partId}`,{rsvp:response,rsvp_note:note});
     showToast(response==='accepted'?'Accepted':'Declined');
-    renderNotifications();renderCal();
+    renderNotifications();
+    if(!document.getElementById('tab-calendar').classList.contains('hidden'))renderCal();
   }catch(e){alert(e.message);}
 }
 
 /* =================== ADMIN =================== */
 async function renderAdmin(){
-  await loadAll();
+  await loadAll();buildStaffSelect();buildRoomSelect();
   document.getElementById('sec-tbody').innerHTML=DB.sections.map(s=>{
     const c=getSC(s.name);
     return`<tr><td><span class="tag" style="background:${c.bg};color:${c.tx}">${esc(s.name)}</span></td>
@@ -1172,24 +1468,37 @@ async function renderAdmin(){
       <button class="btn btn-danger btn-icon" onclick="delRoom(${r.id})"><i class="ti ti-trash" aria-hidden="true"></i></button>
     </div></td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--faint);text-align:center;padding:12px">No rooms</td></tr>';
 
+  document.getElementById('groups-tbody').innerHTML=DB.groups.map(g=>{
+    const n=(g.meeting_group_members||[]).length;
+    return`<tr><td style="font-weight:600">${esc(g.name)}${g.description?`<div style="font-size:11px;color:var(--dim);font-weight:400">${esc(g.description)}</div>`:''}</td>
+    <td><span class="badge b-accent">${n} member${n===1?'':'s'}</span></td>
+    <td><div class="acts">
+      <button class="btn btn-sm" onclick="openModal('edit-group',${g.id})"><i class="ti ti-users" aria-hidden="true"></i>Members</button>
+      <button class="btn btn-danger btn-icon" onclick="delGroup(${g.id})"><i class="ti ti-trash" aria-hidden="true"></i></button>
+    </div></td></tr>`;
+  }).join('')||'<tr><td colspan="3" style="color:var(--faint);text-align:center;padding:12px">No groups yet</td></tr>';
+
   document.getElementById('staff-tbody').innerHTML=DB.staff.filter(s=>s.svc_no!=='SVC000').map(s=>{
     const c=getSC(s.sections?s.sections.name:null);
+    const access=[s.can_view_all?'<span class="badge b-accent" title="Can view all schedules">All cal</span>':'',s.can_create_groups?'<span class="badge b-accent" title="Can create group meetings">Groups</span>':''].filter(Boolean).join(' ')||'<span style="color:var(--faint)">—</span>';
     return`<tr>
       <td class="mono">${s.svc_no}</td>
       <td style="font-weight:600">${esc(s.name)}</td>
       <td style="color:var(--dim);font-size:12px">${esc(s.email||'—')}</td>
       <td><span class="tag" style="background:${c.bg};color:${c.tx}">${s.sections?esc(s.sections.name):'—'}</span></td>
       <td>${s.role==='admin'?'<span class="badge b-accent">Admin</span>':'<span class="badge b-muted">Staff</span>'}</td>
+      <td>${access}</td>
       <td>${s.active?'<span class="badge b-good">Active</span>':'<span class="badge b-bad">Inactive</span>'}</td>
       <td><div class="acts">
         <button class="btn btn-sm" onclick="openModal('edit-staff','${s.svc_no}')"><i class="ti ti-edit" aria-hidden="true"></i></button>
         <button class="btn btn-sm" onclick="openModal('reset-pwd','${s.svc_no}')"><i class="ti ti-lock" aria-hidden="true"></i></button>
         <button class="btn btn-sm ${s.active?'btn-warn':'btn-accent'}" onclick="toggleStaff(${s.id},${s.active})">${s.active?'Deactivate':'Activate'}</button>
       </div></td></tr>`;
-  }).join('')||'<tr><td colspan="7" style="color:var(--faint);text-align:center;padding:12px">No staff</td></tr>';
+  }).join('')||'<tr><td colspan="8" style="color:var(--faint);text-align:center;padding:12px">No staff</td></tr>';
 }
 async function delSection(id,name){if(!confirm(`Remove "${name}"?`))return;try{await DEL('sections','id=eq.'+id);await loadAll();renderAdmin();showToast('Removed');}catch(e){alert(e.message);}}
 async function delRoom(id){if(!confirm('Remove this room?'))return;try{await DEL('rooms','id=eq.'+id);await loadAll();renderAdmin();showToast('Removed');}catch(e){alert(e.message);}}
+async function delGroup(id){if(!confirm('Delete this group?'))return;try{await DEL('meeting_group_members','group_id=eq.'+id);await DEL('meeting_groups','id=eq.'+id);await loadAll();renderAdmin();showToast('Group deleted');}catch(e){alert(e.message);}}
 async function toggleStaff(id,active){try{await PATCH('staff','id=eq.'+id,{active:!active});await loadAll();renderAdmin();showToast('Updated');}catch(e){alert(e.message);}}
 
 /* =================== ADMIN MODALS =================== */
@@ -1215,6 +1524,25 @@ function openModal(type,id){
         <div class="field"><label>Until</label><select id="m-re">${endOpts(r.end_hour)}</select></div></div>
       </div></div>
       <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="saveRoom(${id})">Save</button></div>`);
+  } else if(type==='add-group'){
+    showModal(`<div class="modal-head"><div class="modal-title">Add meeting group</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+      <div class="modal-body"><div class="stack">
+        <div class="field"><label>Group name</label><input id="g-name" placeholder="e.g. Senior Management"/></div>
+        <div class="field"><label>Description (optional)</label><input id="g-desc" placeholder="e.g. SMT weekly meeting attendees"/></div>
+        <div class="section-title" style="margin-top:4px">Members</div>
+        <div class="chk-list">${DB.staff.map(s=>`<label><input type="checkbox" class="g-mem" value="${s.id}"/>${esc(s.name)} · ${s.sections?esc(s.sections.name):'—'}</label>`).join('')}</div>
+      </div></div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="saveGroup()">Create group</button></div>`);
+  } else if(type==='edit-group'){
+    const g=DB.groups.find(x=>x.id===id);const memIds=(g.meeting_group_members||[]).map(m=>m.staff_id);
+    showModal(`<div class="modal-head"><div class="modal-title">Edit group</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+      <div class="modal-body"><div class="stack">
+        <div class="field"><label>Group name</label><input id="g-name" value="${esc(g.name)}"/></div>
+        <div class="field"><label>Description</label><input id="g-desc" value="${esc(g.description||'')}"/></div>
+        <div class="section-title" style="margin-top:4px">Members</div>
+        <div class="chk-list">${DB.staff.map(s=>`<label><input type="checkbox" class="g-mem" value="${s.id}"${memIds.includes(s.id)?' checked':''}/>${esc(s.name)} · ${s.sections?esc(s.sections.name):'—'}</label>`).join('')}</div>
+      </div></div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="updateGroup(${id})">Save</button></div>`);
   } else if(type==='add-staff'){
     showModal(`<div class="modal-head"><div class="modal-title">Add staff</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
       <div class="modal-body"><div class="stack">
@@ -1224,6 +1552,8 @@ function openModal(type,id){
         <div class="field"><label>Email</label><input type="email" id="m-em"/></div>
         <div class="field"><label>Section</label><select id="m-ss">${DB.sections.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>
         <label class="toggle-row"><input type="checkbox" id="m-admin"/><span>Grant admin access</span></label>
+        <label class="toggle-row"><input type="checkbox" id="m-viewall"/><span>Can view everyone's schedule</span></label>
+        <label class="toggle-row"><input type="checkbox" id="m-groups"/><span>Can create &amp; use group meetings</span></label>
       </div></div>
       <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="saveStaff()">Create</button></div>`);
   } else if(type==='edit-staff'){
@@ -1235,6 +1565,8 @@ function openModal(type,id){
         <div class="field"><label>Email</label><input type="email" id="m-em" value="${esc(s.email||'')}"/></div>
         <div class="field"><label>Section</label><select id="m-ss">${DB.sections.map(sec=>`<option value="${sec.id}"${sec.id===s.section_id?' selected':''}>${esc(sec.name)}</option>`).join('')}</select></div>
         <label class="toggle-row"><input type="checkbox" id="m-admin"${s.role==='admin'?' checked':''}/><span>Admin access</span></label>
+        <label class="toggle-row"><input type="checkbox" id="m-viewall"${s.can_view_all?' checked':''}/><span>Can view everyone's schedule</span></label>
+        <label class="toggle-row"><input type="checkbox" id="m-groups"${s.can_create_groups?' checked':''}/><span>Can create &amp; use group meetings</span></label>
       </div></div>
       <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="updateStaff('${s.svc_no}')">Save</button></div>`);
   } else if(type==='reset-pwd'){
@@ -1259,6 +1591,31 @@ async function saveRoom(id){
     await loadAll();closeModal();renderAdmin();showToast(id?'Room updated':'Room added');
   }catch(e){alert(e.message);}
 }
+function selectedGroupMemberIds(){return Array.from(document.querySelectorAll('.g-mem:checked')).map(c=>parseInt(c.value));}
+async function saveGroup(){
+  const name=document.getElementById('g-name').value.trim();
+  const description=document.getElementById('g-desc').value.trim();
+  if(!name){alert('Enter a group name.');return;}
+  try{
+    const rows=await POST('meeting_groups',{name,description,created_by:U.id});
+    const g=Array.isArray(rows)?rows[0]:rows;
+    const ids=selectedGroupMemberIds();
+    if(ids.length)await Promise.all(ids.map(sid=>POST('meeting_group_members',{group_id:g.id,staff_id:sid})));
+    await loadAll();closeModal();renderAdmin();showToast('Group created');
+  }catch(e){alert(e.message);}
+}
+async function updateGroup(id){
+  const name=document.getElementById('g-name').value.trim();
+  const description=document.getElementById('g-desc').value.trim();
+  if(!name){alert('Enter a group name.');return;}
+  try{
+    await PATCH('meeting_groups','id=eq.'+id,{name,description});
+    await DEL('meeting_group_members','group_id=eq.'+id);
+    const ids=selectedGroupMemberIds();
+    if(ids.length)await Promise.all(ids.map(sid=>POST('meeting_group_members',{group_id:id,staff_id:sid})));
+    await loadAll();closeModal();renderAdmin();showToast('Group updated');
+  }catch(e){alert(e.message);}
+}
 async function saveStaff(){
   const svc_no=document.getElementById('m-sv').value.trim().toUpperCase();
   const password=document.getElementById('m-pw').value.trim();
@@ -1266,16 +1623,24 @@ async function saveStaff(){
   const email=document.getElementById('m-em').value.trim();
   const section_id=parseInt(document.getElementById('m-ss').value);
   const role=document.getElementById('m-admin').checked?'admin':'staff';
+  const can_view_all=document.getElementById('m-viewall').checked;
+  const can_create_groups=document.getElementById('m-groups').checked;
   if(!svc_no||!password||!name){alert('Fill all required fields.');return;}
   const issue=pwdIssue(password);if(issue){alert(issue);return;}
-  try{await POST('staff',{svc_no,name,email,section_id,password,role,active:true,must_reset_password:true});await loadAll();closeModal();renderAdmin();showToast('Staff created — they\'ll set their own password on first login');}catch(e){alert(e.message);}
+  try{await POST('staff',{svc_no,name,email,section_id,password,role,active:true,must_reset_password:true,can_view_all,can_create_groups});await loadAll();closeModal();renderAdmin();showToast('Staff created — they\'ll set their own password on first login');}catch(e){alert(e.message);}
 }
 async function updateStaff(svc_no){
   const name=document.getElementById('m-fn').value.trim();
   const email=document.getElementById('m-em').value.trim();
   const section_id=parseInt(document.getElementById('m-ss').value);
   const role=document.getElementById('m-admin').checked?'admin':'staff';
-  try{await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc_no),{name,email,section_id,role});await loadAll();closeModal();renderAdmin();showToast('Staff updated');}catch(e){alert(e.message);}
+  const can_view_all=document.getElementById('m-viewall').checked;
+  const can_create_groups=document.getElementById('m-groups').checked;
+  try{
+    await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc_no),{name,email,section_id,role,can_view_all,can_create_groups});
+    if(U.svc_no===svc_no){U.can_view_all=can_view_all;U.can_create_groups=can_create_groups;U.role=role;}
+    await loadAll();closeModal();renderAdmin();showToast('Staff updated');
+  }catch(e){alert(e.message);}
 }
 async function resetPwd(svc_no){
   const pwd=document.getElementById('m-np').value.trim();
@@ -1287,9 +1652,9 @@ async function resetPwd(svc_no){
 function showModal(html){document.getElementById('modal-root').innerHTML=`<div class="overlay" onclick="handleOvClick(event)"><div class="modal">${html}</div></div>`;}
 function closeModal(){document.getElementById('modal-root').innerHTML='';}
 function handleOvClick(e){if(e.target.classList.contains('overlay'))closeModal();}
-function showAlert(el,msg){el.textContent=msg;el.classList.remove('hidden');}
+function showAlert(el,msg){if(!el)return;el.textContent=msg;el.classList.remove('hidden');}
 let _tt;function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2600);}
-let _rt;window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{if(U&&!document.getElementById('tab-calendar').classList.contains('hidden'))renderCal();},200);});
+let _rt;window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{if(U){if(!document.getElementById('tab-calendar').classList.contains('hidden'))renderCal();if(!document.getElementById('tab-rooms').classList.contains('hidden'))renderRooms();}},200);});
 
 /* =================== INIT =================== */
 (function(){
