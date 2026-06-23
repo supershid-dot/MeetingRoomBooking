@@ -239,6 +239,7 @@ tbody tr:hover td{background:var(--panel2)}
 /* MEETING CARD */
 .mcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;transition:border-color var(--ease)}
 .mcard:hover{border-color:var(--accent)}
+.mcard.mcard-past{opacity:.65}
 .mcard-bar{height:3px}
 .mcard-body{padding:12px 14px}
 .mcard-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
@@ -1241,12 +1242,23 @@ function viewMeetingModal(m){
     <div class="field" style="margin-top:8px"><label>Note (optional)</label><input id="rsvp-note" placeholder="e.g. Will join at 10:30"/></div>`:
     (myRsvp?`<div class="hr"></div><div class="alert ${myRsvp.rsvp==='accepted'?'a-good':'a-bad'}"><i class="ti ti-${myRsvp.rsvp==='accepted'?'check':'x'}" aria-hidden="true"></i>You responded: <strong>${myRsvp.rsvp}</strong>${myRsvp.rsvp_note?' — '+esc(myRsvp.rsvp_note):''} <button class="btn btn-sm btn-ghost" onclick="rsvpChange(${m.id})" style="margin-left:8px;padding:3px 8px;font-size:11px">Change</button></div>`:'')}
     ${(canSee&&canEditNow)?`<div class="hr"></div><div class="section-title">Notify participants</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-sm btn-accent" onclick="sendMeetingComm(${m.id},'schedule')"><i class="ti ti-brand-telegram" aria-hidden="true"></i>Send schedule</button>
-      <button class="btn btn-sm btn-warn" onclick="sendMeetingComm(${m.id},'reminder')"><i class="ti ti-bell-ringing" aria-hidden="true"></i>Send reminder</button>
+    <div class="pill-group" style="margin-bottom:12px">
+      <button class="pill active" onclick="switchNotifyTab('schedule',this)"><i class="ti ti-calendar-share" aria-hidden="true"></i> Schedule</button>
+      <button class="pill" onclick="switchNotifyTab('reminder',this)"><i class="ti ti-bell-ringing" aria-hidden="true"></i> Reminder</button>
+      <button class="pill" onclick="switchNotifyTab('message',this)"><i class="ti ti-message" aria-hidden="true"></i> Message</button>
     </div>
-    <div class="field"><label>Custom message</label><textarea id="email-body" placeholder="Type a message to all attendees…" style="min-height:55px"></textarea></div>
-    <button class="btn btn-sm" style="margin-top:6px" onclick="sendMeetingComm(${m.id},'message')"><i class="ti ti-send" aria-hidden="true"></i>Send message</button>`:''}
+    <div id="nt-schedule" class="nt-panel">
+      <div class="alert a-info" style="margin-bottom:10px;font-size:13px"><i class="ti ti-brand-telegram" aria-hidden="true"></i> Sends the full meeting details with ✅/❌ RSVP buttons to all participants via Telegram.</div>
+      <button class="btn btn-accent" onclick="sendMeetingComm(${m.id},'schedule')"><i class="ti ti-send" aria-hidden="true"></i> Send Schedule</button>
+    </div>
+    <div id="nt-reminder" class="nt-panel" style="display:none">
+      <div class="alert a-warn" style="margin-bottom:10px;font-size:13px"><i class="ti ti-bell-ringing" aria-hidden="true"></i> Sends a ⏰ reminder notification to all participants via Telegram.</div>
+      <button class="btn btn-warn" onclick="sendMeetingComm(${m.id},'reminder')"><i class="ti ti-send" aria-hidden="true"></i> Send Reminder</button>
+    </div>
+    <div id="nt-message" class="nt-panel" style="display:none">
+      <div class="field"><textarea id="email-body" placeholder="Type a custom message to all attendees…" style="min-height:60px;width:100%;box-sizing:border-box"></textarea></div>
+      <button class="btn" style="margin-top:6px" onclick="sendMeetingComm(${m.id},'message')"><i class="ti ti-send" aria-hidden="true"></i> Send Message</button>
+    </div>`:''}
     ${isPast&&U.role!=='admin'?'<div class="alert a-warn" style="margin-top:10px"><i class="ti ti-lock" aria-hidden="true"></i>Past meetings can only be edited by admin.</div>':''}
   </div>
   <div class="modal-foot">
@@ -1277,6 +1289,12 @@ async function rsvp(meetingId,response){
 }
 function rsvpChange(meetingId){
   GET('meetings',`select=*,participants(*)&id=eq.${meetingId}`).then(rows=>{if(rows[0])viewMeetingModal(rows[0]);});
+}
+function switchNotifyTab(tab,btn){
+  document.querySelectorAll('.nt-panel').forEach(p=>p.style.display='none');
+  const panel=document.getElementById('nt-'+tab);if(panel)panel.style.display='';
+  btn.closest('.pill-group').querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
 }
 
 /* =================== EDIT MEETING =================== */
@@ -1687,7 +1705,8 @@ function _mcard(m){
   const c=meetingColor(m);const canSee=canSeeMeetingDetails(m);const mode=m.meeting_mode||'physical';
   const myP=(m.participants||[]).find(p=>p.staff_id===U.id);
   const rsvpDot=myP?`<span class="rsvp-dot rsvp-${myP.rsvp}" style="display:inline-block"></span>`:'';
-  return`<div class="mcard" onclick="viewMeetingAndLoad(${m.id})">
+  const _isPast=new Date(m.date+'T00:00:00')<(()=>{const t=new Date();t.setHours(0,0,0,0);return t;})();
+  return`<div class="mcard${_isPast?' mcard-past':''}" onclick="viewMeetingAndLoad(${m.id})">
     <div class="mcard-bar" style="background:${c.tx}"></div>
     <div class="mcard-body">
       <div class="mcard-header">
@@ -1728,11 +1747,11 @@ function filterMeetings(filter,btn){
     if(!upcoming.length&&!past.length){container.innerHTML=empty;return;}
     let html='';
     if(upcoming.length){
-      html+=`<div class="section-title" style="margin-top:0;margin-bottom:8px"><i class="ti ti-calendar-up" aria-hidden="true"></i> Upcoming (${upcoming.length})</div>`;
+      html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent)"><i class="ti ti-calendar-up" aria-hidden="true"></i> Upcoming</span><span style="background:var(--accent);color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 7px">${upcoming.length}</span><div style="flex:1;height:1px;background:var(--accent);opacity:.25"></div></div>`;
       html+=upcoming.map(_mcard).join('');
     }
     if(past.length){
-      html+=`<div class="section-title" style="margin-top:${upcoming.length?'18px':'0'};margin-bottom:8px;opacity:.7"><i class="ti ti-calendar-down" aria-hidden="true"></i> Past (${past.length})</div>`;
+      html+=`<div style="display:flex;align-items:center;gap:8px;margin-top:${upcoming.length?'20px':'0'};margin-bottom:10px"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)"><i class="ti ti-calendar-down" aria-hidden="true"></i> Past</span><span style="background:var(--faint);color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 7px">${past.length}</span><div style="flex:1;height:1px;background:var(--faint);opacity:.25"></div></div>`;
       html+=past.map(_mcard).join('');
     }
     container.innerHTML=html;
