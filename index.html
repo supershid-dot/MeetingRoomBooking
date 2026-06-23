@@ -1431,14 +1431,22 @@ function initTgPanel(){
   const el=document.getElementById('tg-token-input');
   if(el)el.value=loadTgToken();
 }
-async function sendTg(token,chatId,text){
+async function sendTg(token,chatId,text,replyMarkup){
   try{
+    const body={chat_id:chatId,text,parse_mode:'HTML'};
+    if(replyMarkup)body.reply_markup=replyMarkup;
     const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:chatId,text,parse_mode:'HTML'})
+      body:JSON.stringify(body)
     });
-    const d=await r.json();return d.ok;
+    const d=await r.json();return d.ok?d.result?.message_id:false;
   }catch(e){return false;}
+}
+function rsvpKeyboard(meetingId,participantId){
+  return{inline_keyboard:[[
+    {text:'✅ Accept',callback_data:`rsvp:a:${meetingId}:${participantId}`},
+    {text:'❌ Decline',callback_data:`rsvp:d:${meetingId}:${participantId}`}
+  ]]};
 }
 
 /* =================== TELEGRAM MSG BUILDER =================== */
@@ -1529,14 +1537,98 @@ async function checkPendingNotifs(){
     for(const n of pending){
       const m=meetMap[n.meeting_id];if(!m)continue;
       const msg=buildTgMsg(m,n.type,m.participants||[]);
-      const ok=await sendTg(tgToken,n.recipient_chat_id,msg);
-      if(ok){
-        try{await PATCH('notifications',`id=eq.${n.id}`,{status:'sent',sent_at:new Date().toISOString()});}catch(e){}
+      const kb=(n.type==='invitation'&&n.participant_id)?rsvpKeyboard(n.meeting_id,n.participant_id):null;
+      const msgId=await sendTg(tgToken,n.recipient_chat_id,msg,kb);
+      if(msgId!==false){
+        try{await PATCH('notifications',`id=eq.${n.id}`,{
+          status:'sent',sent_at:new Date().toISOString(),
+          telegram_message_id:msgId||null
+        });}catch(e){}
       }
     }
   }catch(e){}
 }
-function startNotifLoop(){checkPendingNotifs();setInterval(checkPendingNotifs,60000);}
+
+/* =================== RSVP VIA TELEGRAM (BUTTON + TEXT REPLY) =================== */
+async function pollBotUpdates(){
+  const tgToken=loadTgToken();if(!tgToken)return;
+  const offset=parseInt(localStorage.getItem('mf_tg_offset')||'0');
+  try{
+    const r=await fetch(`https://api.telegram.org/bot${tgToken}/getUpdates?offset=${offset}&timeout=0&limit=50`);
+    const d=await r.json();if(!d.ok||!d.result.length)return;
+    for(const upd of d.result){
+      localStorage.setItem('mf_tg_offset',String(upd.update_id+1));
+      if(upd.callback_query?.data?.startsWith('rsvp:')){
+        await handleRsvpCallback(tgToken,upd.callback_query);
+      } else if(upd.message?.text&&upd.message?.reply_to_message){
+        await handleTgTextReply(tgToken,upd.message);
+      }
+    }
+  }catch(e){}
+}
+
+async function handleRsvpCallback(token,cq){
+  const[,action,meetingId,participantId]=cq.data.split(':');
+  const rsvp=action==='a'?'accepted':'declined';
+  const emoji=action==='a'?'✅':'❌';
+  try{
+    await PATCH('participants',`id=eq.${participantId}`,{rsvp});
+    await fetch(`https://api.telegram.org/bot${token}/editMessageText`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        chat_id:cq.message.chat.id,message_id:cq.message.message_id,
+        text:cq.message.text+`\n\n${emoji} You responded: <b>${rsvp}</b>`,
+        parse_mode:'HTML',reply_markup:{inline_keyboard:[]}
+      })
+    });
+    await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({callback_query_id:cq.id,text:`${emoji} Response recorded`,show_alert:false})
+    });
+    if(!document.getElementById('tab-notif').classList.contains('hidden'))renderNotifications();
+    if(!document.getElementById('tab-calendar').classList.contains('hidden'))renderCal();
+  }catch(e){}
+}
+
+async function handleTgTextReply(token,msg){
+  const replyMsgId=msg.reply_to_message?.message_id;
+  if(!replyMsgId)return;
+  const text=(msg.text||'').toLowerCase().trim();
+  try{
+    // Match the original notification by its Telegram message_id
+    const notifs=await GET('notifications',`telegram_message_id=eq.${replyMsgId}&status=eq.sent`);
+    if(!notifs.length)return;
+    const n=notifs[0];
+    if(!n.participant_id)return;
+
+    // Detect RSVP intent from the text
+    const yes=['yes','ok','sure','accept','confirm','will be there','i will','attending','coming','affirmative'];
+    const no=["no","can't","cannot","decline","won't","not attending","can not","reject","unable","sorry"];
+    let rsvp=null;
+    if(yes.some(w=>text.includes(w)))rsvp='accepted';
+    else if(no.some(w=>text.includes(w)))rsvp='declined';
+
+    const note=msg.text; // store the original text as RSVP note
+    const patch={rsvp_note:note};
+    if(rsvp)patch.rsvp=rsvp;
+    await PATCH('participants',`id=eq.${n.participant_id}`,patch);
+
+    // Reply to the staff's message with a confirmation
+    const reply=rsvp==='accepted'?'✅ Got it — your attendance is confirmed.'
+      :rsvp==='declined'?'❌ Noted — you\'ve been marked as declined.'
+      :'💬 Your note has been saved. Use the ✅/❌ buttons to set your RSVP.';
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:msg.chat.id,text:reply,reply_to_message_id:msg.message_id})
+    });
+    if(!document.getElementById('tab-notif').classList.contains('hidden'))renderNotifications();
+    if(!document.getElementById('tab-calendar').classList.contains('hidden'))renderCal();
+  }catch(e){}
+}
+function startNotifLoop(){
+  checkPendingNotifs();setInterval(checkPendingNotifs,60000);
+  pollBotUpdates();setInterval(pollBotUpdates,30000);
+}
 
 /* =================== NOTIFY =================== */
 async function sendMeetingComm(meetingId,type,extra,silent,skipLog){
@@ -1553,7 +1645,12 @@ async function sendMeetingComm(meetingId,type,extra,silent,skipLog){
   for(const p of parts){
     const s=p.staff_id?DB.staff.find(x=>x.id===p.staff_id):null;
     const chatId=s?.telegram_chat_id;
-    if(tgToken&&chatId){const ok=await sendTg(tgToken,chatId,tgMsg);if(ok){tgSent++;continue;}}
+    if(tgToken&&chatId){
+      // Include RSVP buttons for invitation/message types sent to actual participants
+      const kb=(tgMsgType==='invitation'&&p.id)?rsvpKeyboard(meetingId,p.id):null;
+      const ok=await sendTg(tgToken,chatId,tgMsg,kb);
+      if(ok!==false){tgSent++;continue;}
+    }
     if(p.email)emailFallback.push(p);
   }
   if(!skipLog){

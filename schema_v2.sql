@@ -96,9 +96,10 @@ ALTER TABLE participants ADD COLUMN IF NOT EXISTS attendance_marked_by integer R
 ALTER TABLE participants ADD COLUMN IF NOT EXISTS attendance_marked_at timestamptz;
 
 -- Graceful upgrade: add scheduled notification columns
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS scheduled_for    timestamptz;
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS sent_at          timestamptz;
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS recipient_chat_id text;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS scheduled_for      timestamptz;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS sent_at            timestamptz;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS recipient_chat_id  text;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS telegram_message_id bigint;
 
 -- ─────────────────────────── NOTIFICATIONS ────────────────────────
 CREATE TABLE IF NOT EXISTS notifications (
