@@ -402,7 +402,6 @@ tbody tr:hover td{background:var(--panel2)}
     </div>
     <div class="spacer"></div>
     <button class="icon-btn" onclick="openSearch()" title="Search meetings"><i class="ti ti-search" aria-hidden="true"></i></button>
-    <button class="icon-btn" onclick="openChangePwdModal()" title="Change password"><i class="ti ti-lock" aria-hidden="true"></i></button>
     <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme"><i class="ti ti-moon" id="theme-icon" aria-hidden="true"></i></button>
     <div class="who">
       <div class="avatar" id="who-av"></div>
@@ -754,6 +753,7 @@ function buildNav(){
     <div class="avatar" style="width:30px;height:30px;font-size:11px">${initials(U.name)}</div>
     <div class="sb-user-info"><div class="sb-user-name">${esc(U.name)}</div><div class="sb-user-role">${esc(roleLabel)}</div></div>
   </div>
+  <button class="sb-footer-btn" onclick="openChangePwdModal()"><i class="ti ti-lock" aria-hidden="true"></i>Change password</button>
   <button class="sb-footer-btn" onclick="toggleTheme()"><i class="ti ti-moon" id="theme-icon-sb" aria-hidden="true"></i>Toggle theme</button>
   <button class="sb-footer-btn" onclick="doLogout()"><i class="ti ti-logout" aria-hidden="true"></i>Sign out</button>`;
   // Show Pre-book button for admin only
