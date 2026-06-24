@@ -231,11 +231,10 @@ tbody tr:hover td{background:var(--panel2)}
 
 /* ATTENDANCE */
 .att-seg{display:flex;gap:6px;flex-shrink:0}
-.att-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;font-size:12px;font-weight:600;border-radius:8px;border:1.5px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap}
+.att-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;font-size:15px;border-radius:8px;border:1.5px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
 .att-btn:hover{border-color:var(--accent);color:var(--text)}
 .att-btn.on-present{background:var(--good-bg);color:var(--good-ink);border-color:var(--good-ink)}
 .att-btn.on-absent{background:var(--bad-bg);color:var(--bad-ink);border-color:var(--bad-ink)}
-@media(max-width:540px){.prow{flex-wrap:wrap}.att-seg{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px}.att-btn{justify-content:center;padding:10px 8px;font-size:13px}}
 
 /* GROUP CHIP */
 .grp-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:100px;background:var(--accent-bg);color:var(--accent-ink);font-size:12px;font-weight:600;border:1px solid var(--line)}
@@ -1421,8 +1420,8 @@ function viewMeetingModal(m){
             <div style="min-width:0"><div class="prow-name">${esc(_vn)}</div><div class="prow-role"><span class="rsvp-dot rsvp-${p.rsvp}" style="display:inline-block;margin-right:4px"></span>${p.rsvp}${p.rsvp_note?' · '+esc(p.rsvp_note):''}${lv?' · <span style="color:var(--warn-ink)">🏖 '+esc(lv.leave_type)+'</span>':''}</div></div>
           </div>
           ${canMarkAttendance?`<div class="att-seg">
-            <button class="att-btn ${att==='present'?'on-present':''}" data-pid="${p.id}" data-status="present" onclick="markAttendance(${p.id},'present',${m.id},'${att||''}')"><i class="ti ti-check" aria-hidden="true"></i> Present</button>
-            <button class="att-btn ${att==='absent'?'on-absent':''}" data-pid="${p.id}" data-status="absent" onclick="markAttendance(${p.id},'absent',${m.id},'${att||''}')"><i class="ti ti-x" aria-hidden="true"></i> Absent</button>
+            <button class="att-btn ${att==='present'?'on-present':''}" data-pid="${p.id}" data-status="present" onclick="markAttendance(${p.id},'present',${m.id},'${att||''}')" title="Present"><i class="ti ti-check" aria-hidden="true"></i></button>
+            <button class="att-btn ${att==='absent'?'on-absent':''}" data-pid="${p.id}" data-status="absent" onclick="markAttendance(${p.id},'absent',${m.id},'${att||''}')" title="Absent"><i class="ti ti-x" aria-hidden="true"></i></button>
           </div>`:(att?`<span class="badge ${att==='present'?'b-good':'b-bad'}" style="flex-shrink:0">${att==='present'?'✓ Present':'✗ Absent'}</span>`:'')}
         </div>`;}).join('')}
         </div>`:'<div class="alert a-warn"><i class="ti ti-eye-off" aria-hidden="true"></i>Details are private — only visible to participants.</div>'}
