@@ -344,6 +344,13 @@ tbody tr:hover td{background:var(--panel2)}
 .dv-text{font-family:'Faruma',sans-serif;direction:rtl;text-align:right;unicode-bidi:embed}
 /* ROOM BLOCK indicator on grid */
 .wg-blocked{background:repeating-linear-gradient(135deg,rgba(234,179,8,.15) 0,rgba(234,179,8,.15) 5px,transparent 5px,transparent 10px)!important;cursor:not-allowed}
+/* QUICK ACTIONS */
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.qa-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 14px;cursor:pointer;text-align:center;transition:border-color var(--ease),box-shadow var(--ease)}
+.qa-card:hover{border-color:rgba(13,148,136,.4);box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.qa-icon{font-size:28px;margin-bottom:10px;line-height:1}
+.qa-title{font-size:14px;font-weight:700;margin-bottom:3px}
+.qa-sub{font-size:11px;color:var(--faint)}
 </style>
 </head>
 <body>
@@ -442,8 +449,14 @@ tbody tr:hover td{background:var(--panel2)}
       <div class="ph"><div class="ph-eyebrow" id="home-eyebrow">Home</div><div class="ph-title" id="home-greeting">Welcome</div><div class="ph-sub" id="home-date"></div></div>
       <div id="home-next"></div>
       <div class="hm-grid" id="home-stats"></div>
-      <div class="section-title" style="margin-bottom:8px">Today's meetings</div>
-      <div id="home-today-list"></div>
+      <div id="home-today-wrap" style="margin-bottom:4px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="section-title" style="margin:0">Today's meetings</div>
+          <button class="btn btn-ghost btn-sm" onclick="switchTab('meetings')" style="font-size:12px;color:var(--accent-ink);padding:3px 8px">View all</button>
+        </div>
+        <div id="home-today-list"></div>
+      </div>
+      <div id="home-quick-actions"></div>
     </div>
 
     <!-- CALENDAR TAB (meeting schedule) -->
@@ -2501,12 +2514,14 @@ async function renderHome(){
     }else{nextEl.innerHTML='';}
   }
   const statsEl=document.getElementById('home-stats');
-  if(statsEl){statsEl.innerHTML='<div class="hm-stat" onclick="switchTab(\'meetings\')"><div class="hm-val">'+todayMeetings.length+'</div><div class="hm-lbl">Today\'s meetings</div></div><div class="hm-stat" onclick="switchTab(\'notif\')"><div class="hm-val">'+pendingRsvps+'</div><div class="hm-lbl">Pending RSVPs</div></div>';}
+  if(statsEl){statsEl.innerHTML=`<div class="hm-stat" onclick="switchTab('meetings')"><div class="hm-val">${todayMeetings.length}</div><div class="hm-lbl">Today's meetings</div></div><div class="hm-stat" onclick="switchTab('notif')"><div class="hm-val" style="color:var(--warn-ink)">${pendingRsvps}</div><div class="hm-lbl">Pending RSVPs</div></div>`;}
   const listEl=document.getElementById('home-today-list');
   if(listEl){
     if(!todayMeetings.length){listEl.innerHTML='<div class="alert a-info"><i class="ti ti-calendar-off" aria-hidden="true"></i>No meetings today — enjoy your day!</div>';}
     else{listEl.innerHTML=todayMeetings.map(_mcard).join('');}
   }
+  const qaEl=document.getElementById('home-quick-actions');
+  if(qaEl){qaEl.innerHTML=`<div class="hr" style="margin:18px 0 14px"></div><div class="section-title" style="margin:0 0 12px">Quick actions</div><div class="qa-grid"><div class="qa-card" onclick="openNewMeetingModal()"><div class="qa-icon">📅</div><div class="qa-title">New meeting</div><div class="qa-sub">Schedule now</div></div><div class="qa-card" onclick="switchTab('rooms')"><div class="qa-icon">🏢</div><div class="qa-title">Book a room</div><div class="qa-sub">Check availability</div></div></div>`;}
 }
 
 /* =================== RECURRING MEETINGS =================== */
