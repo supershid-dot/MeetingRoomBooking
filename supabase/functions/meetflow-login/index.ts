@@ -4,9 +4,9 @@
 // then returns a signed JWT that PostgREST will validate for all subsequent
 // API calls from the browser.
 //
-// Required secret (set once via Supabase CLI or dashboard):
-//   supabase secrets set SUPABASE_JWT_SECRET=<your-project-jwt-secret>
-// Find the secret at: Supabase dashboard → Settings → API → JWT Settings → JWT Secret
+// Required secret (set once via Supabase dashboard → Edge Functions → Secrets):
+//   Name: MF_JWT_SECRET
+//   Value: your project's JWT secret (Settings → API → JWT Keys → JWT Secret)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -52,8 +52,8 @@ Deno.serve(async (req: Request) => {
     user.password = h
   }
 
-  const jwtSecret = Deno.env.get('SUPABASE_JWT_SECRET')
-  if (!jwtSecret) return json({ error: 'Server misconfiguration: SUPABASE_JWT_SECRET not set' }, 500)
+  const jwtSecret = Deno.env.get('MF_JWT_SECRET')
+  if (!jwtSecret) return json({ error: 'Server misconfiguration: MF_JWT_SECRET not set' }, 500)
 
   const now = Math.floor(Date.now() / 1000)
   const token = await signJWT(

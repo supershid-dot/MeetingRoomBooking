@@ -239,7 +239,7 @@ ALTER TABLE app_config DISABLE ROW LEVEL SECURITY;
 -- Deploy steps:
 --   1. supabase login
 --   2. supabase link --project-ref <your-project-ref>
---   3. supabase secrets set SUPABASE_JWT_SECRET=<value from Settings → API → JWT Settings>
+--   3. Add secret in dashboard: Name = MF_JWT_SECRET, Value = JWT secret from Settings → API → JWT Keys
 --   4. supabase functions deploy meetflow-login
 --   5. Run this SQL block in the Supabase SQL Editor
 
