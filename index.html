@@ -637,6 +637,7 @@ async function sbF(path,opts={}){
 async function GET(t,p=''){const r=await sbF(t+(p?'?'+p:''),{method:'GET',headers:{'Prefer':'return=representation'}});if(r.error)throw new Error(r.error.message);return Array.isArray(r.data)?r.data:(r.data?[r.data]:[]);}
 async function POST(t,b){const r=await sbF(t,{method:'POST',body:JSON.stringify(b),headers:{'Prefer':'return=representation'}});if(r.error)throw new Error(r.error.message);return r.data;}
 async function PATCH(t,p,b){const r=await sbF(t+'?'+p,{method:'PATCH',body:JSON.stringify(b),headers:{'Prefer':'return=representation'}});if(r.error)throw new Error(r.error.message);return r.data;}
+async function UPSERT(t,b){const r=await sbF(t,{method:'POST',body:JSON.stringify(b),headers:{'Prefer':'return=representation,resolution=merge-duplicates'}});if(r.error)throw new Error(r.error.message);return r.data;}
 async function DEL(t,p){const r=await sbF(t+'?'+p,{method:'DELETE'});if(r.error)throw new Error(r.error.message);}
 
 /* =================== CONFIG =================== */
@@ -730,6 +731,7 @@ async function loadAll(){
   try{DB.groups=await GET('meeting_groups','select=*,meeting_group_members(staff_id)&order=name.asc');}catch(e){DB.groups=[];}
   try{DB.room_blocks=await GET('room_blocks','select=*&order=date_from.asc');}catch(e){DB.room_blocks=[];}
   try{DB.leaves=await GET('staff_leaves','select=*&order=date_from.asc');}catch(e){DB.leaves=[];}
+  try{const cfg=await GET('app_config','select=*');DB.config={};cfg.forEach(r=>{DB.config[r.key]=r.value;});}catch(e){DB.config={};}
   if(selectedStaffId==null)selectedStaffId=U.id;
   if(selectedRoomId==null&&DB.rooms.length)selectedRoomId=DB.rooms[0].id;
 }
@@ -1102,12 +1104,13 @@ function openNewMeetingModal(preDate,preSlot,preRoomId){
         <div style="margin-top:14px">
           <div class="section-title">Participants</div>
           <div id="nm-participants" class="stack" style="gap:6px"></div>
-          <div class="r2" style="margin-top:8px">
-            <div class="field"><label>Add staff</label>
-              <input id="nm-staff-q" placeholder="Search by name or service no…" oninput="filterStaffSel(this.value)" autocomplete="off" style="margin-bottom:5px"/>
-              <select id="nm-add-staff" size="4" style="height:auto;min-height:80px"><option value="">— search above —</option></select>
+          <div class="field" style="margin-top:8px">
+            <label>Add staff</label>
+            <input id="nm-staff-q" placeholder="Search by name or service no…" oninput="filterStaffSel(this.value)" autocomplete="off" style="margin-bottom:5px"/>
+            <div style="display:flex;gap:6px;align-items:flex-end">
+              <select id="nm-add-staff" size="4" style="flex:1;height:auto;min-height:80px"><option value="">— search above —</option></select>
+              <button class="btn btn-sm" onclick="addStaffParticipant()" style="flex-shrink:0"><i class="ti ti-plus" aria-hidden="true"></i>Add</button>
             </div>
-            <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addStaffParticipant()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
           </div>
           ${groupSelectBlock()}
           <div class="section-title" style="margin-top:10px">External guests</div>
@@ -1533,12 +1536,13 @@ function editMeetingModal(m){
         <div style="margin-top:14px">
           <div class="section-title">Participants</div>
           <div id="nm-participants" class="stack" style="gap:6px"></div>
-          <div class="r2" style="margin-top:8px">
-            <div class="field"><label>Add staff</label>
-              <input id="nm-staff-q" placeholder="Search by name or service no…" oninput="filterStaffSel(this.value)" autocomplete="off" style="margin-bottom:5px"/>
-              <select id="nm-add-staff" size="4" style="height:auto;min-height:80px"><option value="">— search above —</option></select>
+          <div class="field" style="margin-top:8px">
+            <label>Add staff</label>
+            <input id="nm-staff-q" placeholder="Search by name or service no…" oninput="filterStaffSel(this.value)" autocomplete="off" style="margin-bottom:5px"/>
+            <div style="display:flex;gap:6px;align-items:flex-end">
+              <select id="nm-add-staff" size="4" style="flex:1;height:auto;min-height:80px"><option value="">— search above —</option></select>
+              <button class="btn btn-sm" onclick="addStaffParticipant()" style="flex-shrink:0"><i class="ti ti-plus" aria-hidden="true"></i>Add</button>
             </div>
-            <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addStaffParticipant()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
           </div>
           ${groupSelectBlock()}
           <div class="r2" style="margin-top:6px">
@@ -1629,11 +1633,18 @@ async function confirmCancel(meetingId,recurrenceId){
 }
 
 /* =================== TELEGRAM =================== */
-function loadTgToken(){return localStorage.getItem('mf_tg_token')||'';}
-function saveTgToken(){
+function loadTgToken(){return (DB.config&&DB.config.tg_token)||localStorage.getItem('mf_tg_token')||'';}
+async function saveTgToken(){
   const tok=document.getElementById('tg-token-input').value.trim();
-  localStorage.setItem('mf_tg_token',tok);
-  showToast(tok?'Telegram token saved':'Telegram token cleared');
+  try{
+    await UPSERT('app_config',{key:'tg_token',value:tok});
+    if(!DB.config)DB.config={};DB.config.tg_token=tok;
+    localStorage.removeItem('mf_tg_token');
+    showToast(tok?'Telegram token saved':'Telegram token cleared');
+  }catch(e){
+    localStorage.setItem('mf_tg_token',tok);
+    showToast(tok?'Saved locally (DB unavailable)':'Cleared');
+  }
 }
 function initTgPanel(){
   const el=document.getElementById('tg-token-input');

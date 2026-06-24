@@ -192,6 +192,16 @@ ALTER TABLE staff_leaves DISABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS staff_leaves_staff_idx ON staff_leaves(staff_id);
 CREATE INDEX IF NOT EXISTS staff_leaves_dates_idx ON staff_leaves(date_from, date_to);
 
+-- ─────────────────────────── APP CONFIG ──────────────────────────
+-- Generic key-value store for app-wide settings (e.g. Telegram bot token).
+-- Storing here means the setting is shared across all browsers/devices.
+CREATE TABLE IF NOT EXISTS app_config (
+  key        text PRIMARY KEY,
+  value      text,
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE app_config DISABLE ROW LEVEL SECURITY;
+
 -- ─────────────────────────── DONE ─────────────────────────────────
 -- After running this, open the app, paste your Supabase URL + anon key,
 -- then sign in with service number SVC000 / Admin1234.
