@@ -2431,17 +2431,28 @@ async function resetPwd(svc_no){
 }
 
 /* =================== HELPERS =================== */
-function showModal(html){document.getElementById('modal-root').innerHTML=`<div class="overlay" onclick="handleOvClick(event)"><div class="modal">${html}</div></div>`;}
-function showBigModal(html){document.getElementById('modal-root').innerHTML=`<div class="overlay" onclick="handleOvClick(event)"><div class="modal modal-wide">${html}</div></div>`;}
-function closeModal(){document.getElementById('modal-root').innerHTML='';}
+let _suppressPop=false;
+function _pushIfNeeded(){if(!history.state||!history.state.mf_modal)history.pushState({mf_modal:true},'');}
+function _goBackSuppressed(){_suppressPop=true;history.back();}
+window.addEventListener('popstate',()=>{
+  if(_suppressPop){_suppressPop=false;return;}
+  // Back button pressed — close whatever is open
+  const so=document.getElementById('search-overlay');
+  if(so&&so.style.display==='flex'){so.style.display='none';return;}
+  const mr=document.getElementById('modal-root');
+  if(mr&&mr.innerHTML){mr.innerHTML='';return;}
+});
+function showModal(html){_pushIfNeeded();document.getElementById('modal-root').innerHTML=`<div class="overlay" onclick="handleOvClick(event)"><div class="modal">${html}</div></div>`;}
+function showBigModal(html){_pushIfNeeded();document.getElementById('modal-root').innerHTML=`<div class="overlay" onclick="handleOvClick(event)"><div class="modal modal-wide">${html}</div></div>`;}
+function closeModal(){_goBackSuppressed();document.getElementById('modal-root').innerHTML='';}
 function handleOvClick(e){if(e.target.classList.contains('overlay'))closeModal();}
 function showAlert(el,msg){if(!el)return;el.textContent=msg;el.classList.remove('hidden');}
 let _tt;function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2600);}
 let _rt;window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{if(U){if(!document.getElementById('tab-calendar').classList.contains('hidden'))renderCal();if(!document.getElementById('tab-rooms').classList.contains('hidden'))renderRooms();}},200);});
 
 /* =================== GLOBAL SEARCH =================== */
-function openSearch(){const o=document.getElementById('search-overlay');o.style.display='flex';document.getElementById('search-input').value='';document.getElementById('search-res').innerHTML='<div style="color:var(--faint);text-align:center;padding:24px;font-size:13px">Type to search meetings…</div>';setTimeout(()=>document.getElementById('search-input').focus(),50);}
-function closeSearch(){document.getElementById('search-overlay').style.display='none';}
+function openSearch(){_pushIfNeeded();const o=document.getElementById('search-overlay');o.style.display='flex';document.getElementById('search-input').value='';document.getElementById('search-res').innerHTML='<div style="color:var(--faint);text-align:center;padding:24px;font-size:13px">Type to search meetings…</div>';setTimeout(()=>document.getElementById('search-input').focus(),50);}
+function closeSearch(){_goBackSuppressed();document.getElementById('search-overlay').style.display='none';}
 function handleSearchOvClick(e){if(e.target===document.getElementById('search-overlay'))closeSearch();}
 let _sqt;function doSearch(q){clearTimeout(_sqt);q=q.trim();if(!q){document.getElementById('search-res').innerHTML='<div style="color:var(--faint);text-align:center;padding:24px;font-size:13px">Type to search meetings…</div>';return;}_sqt=setTimeout(()=>_doSearch(q),300);}
 async function _doSearch(q){
