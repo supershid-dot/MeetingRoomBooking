@@ -673,8 +673,13 @@ function myAccessibleSecIds(){
 }
 function visibleStaff(){
   if(canViewAll())return DB.staff;
-  const secIds=myAccessibleSecIds();
-  return DB.staff.filter(s=>s.id===U.id||secIds.has(s.section_id));
+  const mySecIds=myAccessibleSecIds();
+  return DB.staff.filter(s=>{
+    if(s.id===U.id)return true;
+    if(mySecIds.has(s.section_id))return true;
+    // a supervisor whose extra sections include one of mine should also be visible
+    return (DB.staff_sections||[]).some(ss=>ss.staff_id===s.id&&mySecIds.has(ss.section_id));
+  });
 }
 /* Creator OR staff in an accessible section OR admin can manage a meeting. */
 function canManage(m){
