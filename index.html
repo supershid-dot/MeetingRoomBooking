@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
 <style>
+@font-face{font-family:'Faruma';src:url('Faruma_Regular.ttf') format('truetype');font-weight:normal;font-style:normal;}
 :root{
   --bg:#0a0b0e;--panel:#13151a;--panel2:#1a1d23;--line:#25282f;--line2:#1e2026;
   --ink:#f0f1f3;--dim:#8b8f99;--faint:#4a4e57;
@@ -330,6 +331,11 @@ tbody tr:hover td{background:var(--panel2)}
 .hm-next .hm-val{color:#fff;font-size:20px;font-weight:700}
 /* MEETING NOTES */
 .notes-area{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;min-height:80px;width:100%;box-sizing:border-box;resize:vertical;color:var(--text);font-family:inherit}
+.notes-area.dv{font-family:'Faruma',sans-serif;direction:rtl;text-align:right;font-size:15px}
+.lang-toggle{display:flex;gap:2px;background:var(--line);border-radius:6px;padding:2px}
+.lang-toggle button{border:none;background:transparent;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;color:var(--dim);transition:all .15s}
+.lang-toggle button.active{background:var(--card);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.dv-text{font-family:'Faruma',sans-serif;direction:rtl;text-align:right;unicode-bidi:embed}
 /* ROOM BLOCK indicator on grid */
 .wg-blocked{background:repeating-linear-gradient(135deg,rgba(234,179,8,.15) 0,rgba(234,179,8,.15) 5px,transparent 5px,transparent 10px)!important;cursor:not-allowed}
 </style>
@@ -1430,7 +1436,13 @@ function viewMeetingModal(m){
           <div class="section-title" style="margin:0">My notes</div>
           <span style="font-size:10px;color:var(--faint)">Private — only you can see</span>
         </div>
-        <textarea id="my-notes-area" class="notes-area" placeholder="Your private notes for this meeting…" style="min-height:80px">${esc(myRsvp&&myRsvp.personal_notes?myRsvp.personal_notes:'')}</textarea>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+          <div class="lang-toggle">
+            <button id="my-notes-en" class="${isDV(myRsvp&&myRsvp.personal_notes?myRsvp.personal_notes:'')?'':'active'}" onclick="setNoteLang('my-notes-area','en',this)">EN</button>
+            <button id="my-notes-dv" class="${isDV(myRsvp&&myRsvp.personal_notes?myRsvp.personal_notes:'')?'active':''}" onclick="setNoteLang('my-notes-area','dv',this)">ދިވެހި</button>
+          </div>
+        </div>
+        <textarea id="my-notes-area" class="notes-area${isDV(myRsvp&&myRsvp.personal_notes?myRsvp.personal_notes:'')?' dv':''}" placeholder="Your private notes for this meeting…" style="min-height:80px">${esc(myRsvp&&myRsvp.personal_notes?myRsvp.personal_notes:'')}</textarea>
         <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:4px">
           <span id="notes-saved-msg" style="font-size:11px;color:var(--faint)"></span>
           <button class="btn btn-sm" onclick="savePersonalNotes(${myRsvp?myRsvp.id:'null'})">Save</button>
@@ -1444,11 +1456,17 @@ function viewMeetingModal(m){
         </div>
         <div id="minutes-view">
           ${m.minutes
-            ?`<div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;line-height:1.6;max-height:180px;overflow-y:auto">${esc(m.minutes)}</div>${m.minutes_updated_at?`<div style="font-size:10px;color:var(--faint);margin-top:4px">Last updated ${new Date(m.minutes_updated_at).toLocaleString()}</div>`:''}`
+            ?`<div class="${isDV(m.minutes)?'dv-text':''}" style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:${isDV(m.minutes)?'15':'13'}px;white-space:pre-wrap;line-height:1.6;max-height:180px;overflow-y:auto">${esc(m.minutes)}</div>${m.minutes_updated_at?`<div style="font-size:10px;color:var(--faint);margin-top:4px">Last updated ${new Date(m.minutes_updated_at).toLocaleString()}</div>`:''}`
             :`<div style="color:var(--faint);font-size:13px;padding:8px 0">No minutes recorded yet.</div>`}
         </div>
         ${manage?`<div id="minutes-edit" style="display:none">
-          <textarea id="minutes-area" class="notes-area" placeholder="Type meeting minutes here…" style="min-height:120px">${esc(m.minutes||'')}</textarea>
+          <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+            <div class="lang-toggle">
+              <button id="min-en" class="${isDV(m.minutes||'')?'':'active'}" onclick="setNoteLang('minutes-area','en',this)">EN</button>
+              <button id="min-dv" class="${isDV(m.minutes||'')?'active':''}" onclick="setNoteLang('minutes-area','dv',this)">ދިވެހި</button>
+            </div>
+          </div>
+          <textarea id="minutes-area" class="notes-area${isDV(m.minutes||'')?' dv':''}" placeholder="Type meeting minutes here…" style="min-height:120px">${esc(m.minutes||'')}</textarea>
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
             <button class="btn btn-sm" onclick="cancelMinutesEdit()">Cancel</button>
             <button class="btn btn-sm btn-accent" onclick="saveMinutes(${m.id})"><i class="ti ti-device-floppy" aria-hidden="true"></i> Save minutes</button>
@@ -2507,6 +2525,17 @@ async function delRoomBlock(id){
 }
 
 /* =================== MEETING NOTES =================== */
+/* Thaana Unicode block: U+0780–U+07BF */
+function isDV(text){return /[ހ-޿]/.test(text||'');}
+function setNoteLang(textareaId,lang,btn){
+  const ta=document.getElementById(textareaId);if(!ta)return;
+  if(lang==='dv'){ta.classList.add('dv');ta.dir='rtl';}
+  else{ta.classList.remove('dv');ta.dir='ltr';}
+  const group=btn.closest('.lang-toggle');
+  if(group)group.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ta.focus();
+}
 async function savePersonalNotes(partId){
   if(!partId||partId==='null'){showToast('You must be a participant to add notes');return;}
   const val=(document.getElementById('my-notes-area')||{}).value||'';
