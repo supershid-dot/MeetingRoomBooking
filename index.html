@@ -507,6 +507,7 @@ tbody tr:hover td{background:var(--panel2)}
           <button class="pill" data-filter="today" onclick="filterMeetings('today',this)"><i class="ti ti-calendar-due" aria-hidden="true"></i> Today</button>
           <button class="pill" data-filter="internal" onclick="filterMeetings('internal',this)"><i class="ti ti-door" aria-hidden="true"></i> Internal</button>
           <button class="pill" data-filter="external" onclick="filterMeetings('external',this)"><i class="ti ti-building" aria-hidden="true"></i> External</button>
+          <button class="pill" data-filter="cancelled" onclick="filterMeetings('cancelled',this)"><i class="ti ti-ban" aria-hidden="true"></i> Cancelled</button>
         </div>
         <div style="display:flex;gap:6px">
           <button class="btn btn-sm hidden" id="btn-prebook" onclick="openPreBookingModal()"><i class="ti ti-calendar-repeat" aria-hidden="true"></i>Pre-book</button>
@@ -2135,26 +2136,39 @@ function filterMeetings(filter,btn){
   if(btn)btn.classList.add('active');
   const today=new Date();today.setHours(0,0,0,0);const ts=todayStr();
   const container=document.getElementById('meetings-list');
-  const empty='<div class="alert a-info"><i class="ti ti-calendar-off" aria-hidden="true"></i>No meetings found.</div>';
+  const timeSeg=document.getElementById('time-seg');
   let list=[...allMeetingsCache];
+
+  // Cancelled filter — show all cancelled meetings regardless of date
+  if(filter==='cancelled'){
+    if(timeSeg)timeSeg.style.display='none';
+    list=list.filter(m=>m.is_cancelled).sort(_sortDesc);
+    if(!list.length){container.innerHTML=`<div class="alert a-info"><i class="ti ti-ban" aria-hidden="true"></i>No cancelled meetings found.</div>`;return;}
+    container.innerHTML=list.map(_mcard).join('');
+    return;
+  }
+
+  if(timeSeg)timeSeg.style.display='';
+
+  // Exclude cancelled from all other views
+  list=list.filter(m=>!m.is_cancelled);
+
   if(filter==='internal')list=list.filter(m=>m.type==='internal');
   else if(filter==='external')list=list.filter(m=>m.type==='external');
   else if(filter==='today')list=list.filter(m=>m.date===ts);
-  else if(filter==='upcoming')list=list.filter(m=>new Date(m.date+'T00:00:00')>=today);
-  else if(filter==='past')list=list.filter(m=>new Date(m.date+'T00:00:00')<today);
 
   if(filter==='today'){
     list.sort(_sortAsc);
-    if(!list.length){container.innerHTML=empty;return;}
+    if(!list.length){container.innerHTML=`<div class="alert a-info"><i class="ti ti-calendar-off" aria-hidden="true"></i>No meetings today.</div>`;return;}
     container.innerHTML=list.map(_mcard).join('');
     return;
   }
   // all / internal / external — split by the Upcoming/Past toggle
   const isUpcoming=m=>new Date(m.date+'T00:00:00')>=today;
   if(meetingTimeSeg==='upcoming'){
-    list=list.filter(m=>isUpcoming(m)&&!m.is_cancelled).sort(_sortAsc);
+    list=list.filter(m=>isUpcoming(m)).sort(_sortAsc);
   }else{
-    list=list.filter(m=>!isUpcoming(m)||m.is_cancelled).sort(_sortDesc);
+    list=list.filter(m=>!isUpcoming(m)).sort(_sortDesc);
   }
   if(!list.length){container.innerHTML=`<div class="alert a-info"><i class="ti ti-calendar-off" aria-hidden="true"></i>No ${meetingTimeSeg} meetings found.</div>`;return;}
   container.innerHTML=list.map(_mcard).join('');
