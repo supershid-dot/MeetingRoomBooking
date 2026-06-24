@@ -699,7 +699,7 @@ async function doLogin(){
   btn.disabled=true;btn.innerHTML='<div class="spin" style="width:15px;height:15px;border-width:2px;margin:0 auto"></div>';
   err.classList.add('hidden');
   try{
-    const rows=await GET('staff','select=*,sections!section_id(id,name)&svc_no=ilike.'+encodeURIComponent(svc)+'&active=eq.true');
+    const rows=await GET('staff','select=*,sections!staff_section_id_fkey(id,name)&svc_no=ilike.'+encodeURIComponent(svc)+'&active=eq.true');
     if(!rows.length){showAlert(err,'Account not found or inactive.');return;}
     const hash=await hashPwd(pwd);
     let user=rows.find(r=>r.password===hash);
@@ -739,7 +739,7 @@ async function loadAll(){
   const[secs,rooms,staff]=await Promise.all([
     GET('sections','select=*&order=name.asc'),
     GET('rooms','select=*&order=name.asc'),
-    GET('staff','select=*,sections!section_id(id,name)&order=name.asc&active=eq.true')
+    GET('staff','select=*,sections!staff_section_id_fkey(id,name)&order=name.asc&active=eq.true')
   ]);
   DB.sections=secs;DB.rooms=rooms;DB.staff=staff;
   secs.forEach(s=>getSC(s.name));
