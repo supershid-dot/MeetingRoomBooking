@@ -794,11 +794,35 @@ async function doLogin(){
   btn.disabled=true;btn.innerHTML='<div class="spin" style="width:15px;height:15px;border-width:2px;margin:0 auto"></div>';
   err.classList.add('hidden');
   try{
-    const res=await fetch(SB_URL+'/functions/v1/meetflow-login',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({svc_no:svc,password:pwd})});
-    const data=await res.json();
-    if(!res.ok){showAlert(err,data.error||'Login failed.');return;}
-    SB_TOKEN=data.token;localStorage.setItem('sb_token',SB_TOKEN);
-    U=data.user;
+    /* Try Edge Function first; fall back to direct DB auth if not yet deployed */
+    let user=null;
+    try{
+      const res=await fetch(SB_URL+'/functions/v1/meetflow-login',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({svc_no:svc,password:pwd})});
+      if(res.ok){
+        const data=await res.json();
+        SB_TOKEN=data.token;localStorage.setItem('sb_token',SB_TOKEN);
+        user=data.user;
+      }else if(res.status===404||res.status===503){
+        /* Edge Function not deployed yet — fall through to direct auth */
+      }else{
+        const data=await res.json().catch(()=>({}));
+        showAlert(err,data.error||'Login failed.');return;
+      }
+    }catch(fe){/* network error — Edge Function not reachable, use direct auth */}
+
+    if(!user){
+      /* Direct DB auth (used until Edge Function is deployed) */
+      const rows=await GET('staff','select=id,svc_no,name,email,section_id,role,active,rank_short,designation,telegram_chat_id,can_view_all,can_create_groups,must_reset_password,password,sections!staff_section_id_fkey(id,name)&svc_no=ilike.'+encodeURIComponent(svc)+'&active=eq.true');
+      if(!rows.length){showAlert(err,'Account not found or inactive.');return;}
+      user=rows[0];
+      const ok=await verifyPwd(pwd,user.password);
+      if(!ok){showAlert(err,'Incorrect password.');return;}
+      if(!user.password.startsWith('pbkdf2:')){
+        try{const h=await hashPwd(pwd);await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc),{password:h});user.password=h;}catch(e_){}
+      }
+    }
+
+    U=user;
     if(U.must_reset_password){showPage('newpwd');document.getElementById('np-1').value='';document.getElementById('np-2').value='';document.getElementById('np-err').classList.add('hidden');return;}
     enterApp();
   }catch(e){showAlert(err,'Error: '+e.message);}
