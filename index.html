@@ -202,6 +202,8 @@ tbody tr:hover td{background:var(--panel2)}
 .wg-slot:hover{background:var(--panel2)}
 .wg-slot.past{opacity:.32;pointer-events:none}
 .wg-slot.hourline{border-bottom-color:var(--line)}
+.wg-slot.halfhour{border-bottom-color:var(--line)}
+.wg-tl.half{opacity:.55;font-size:8px}
 .wg-block{position:absolute;inset:1px;border-radius:4px;padding:2px 5px;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
 .wg-block-title{font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
 .wg-block-sub{font-size:9px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
@@ -872,10 +874,11 @@ function buildWeekGrid(gridEl,dates,today,meetings,opts){
   });
   for(let s=CAL_START*4;s<CAL_END*4;s++){
     const hourline=s%4===3;
+    const halfhour=s%2===1&&!hourline;
     const isLast=s===CAL_END*4-1;
-    const tl=document.createElement('div');tl.className='wg-tl';if(isLast)tl.style.borderBottom='none';tl.textContent=s%4===0?fTime(s):'';gridEl.appendChild(tl);
+    const tl=document.createElement('div');tl.className='wg-tl'+(s%4!==0&&s%2===0?' half':'');if(isLast)tl.style.borderBottom='none';tl.textContent=s%2===0?fTime(s):'';gridEl.appendChild(tl);
     dates.forEach((d,di)=>{
-      const cell=document.createElement('div');cell.className='wg-slot'+(hourline?' hourline':'');
+      const cell=document.createElement('div');cell.className='wg-slot'+(hourline?' hourline':halfhour?' halfhour':'');
       const isPast=d<today;if(isLast)cell.style.borderBottom='none';if(di===6)cell.style.borderRight='none';
       if(isPast)cell.classList.add('past');
       const ds=dStr(d);
@@ -1319,7 +1322,7 @@ function viewMeetingModal(m){
   const mDate=new Date(m.date+'T00:00:00');
   const isPast=mDate<today;const isToday=mDate.getTime()===today.getTime();
   const canEditNow=isPast?(U.role==='admin'):manage;
-  const canMarkAttendance=manage&&(isPast||isToday);
+  const canMarkAttendance=manage;
   const c=meetingColor(m);
   const ps=m.participants||[];
   const myRsvp=ps.find(p=>p.staff_id===U.id);
