@@ -533,7 +533,7 @@ tbody tr:hover td{background:var(--panel2)}
       </div>
       <div class="panel">
         <div class="panel-head"><div class="panel-title"><i class="ti ti-users" aria-hidden="true"></i>Staff</div><button class="btn btn-accent btn-sm" onclick="openModal('add-staff')"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
-        <div class="tbl-wrap"><table><thead><tr><th>Svc no.</th><th>Name</th><th>Email</th><th>Section</th><th>Role</th><th>Access</th><th>Telegram</th><th>Status</th><th>Actions</th></tr></thead><tbody id="staff-tbody"></tbody></table></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Svc no.</th><th>Name</th><th>Rank/Designation</th><th>Email</th><th>Section</th><th>Role</th><th>Access</th><th>Telegram</th><th>Status</th><th>Actions</th></tr></thead><tbody id="staff-tbody"></tbody></table></div>
       </div>
     </div>
   </main>
@@ -570,6 +570,8 @@ const PALETTE=[
 let _sc={};
 function getSC(name){if(!name)return{bg:'rgba(139,143,153,.15)',tx:'#8b8f99',br:'rgba(139,143,153,.3)'};if(!_sc[name])_sc[name]=PALETTE[Object.keys(_sc).length%PALETTE.length];return _sc[name];}
 function initials(n){return(n||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();}
+function staffName(s){return s?(s.rank_short?s.rank_short+' ':'')+s.name:'';}
+
 function esc(s){return(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 /* Local-date string (avoids the UTC off-by-one-day bug). */
 function dStr(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
@@ -588,6 +590,7 @@ function pwdIssue(p){if(!p||p.length<10)return'Minimum 10 characters.';if(!/[A-Z
 async function hashPwd(p){const enc=new TextEncoder();const buf=await crypto.subtle.digest('SHA-256',enc.encode(p));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const MODE_LABEL={physical:'In person',online:'Online',both:'Hybrid'};
 const MODE_ICON={physical:'ti-map-pin',online:'ti-video',both:'ti-device-laptop'};
+const LEAVE_TYPES=['Annual Leave','Sick Leave','Emergency Leave','Maternity/Paternity Leave','Study Leave','Unpaid Leave','Other'];
 
 /* =================== CALENDAR HOURS =================== */
 let CAL_START=8,CAL_END=20;
@@ -695,7 +698,7 @@ async function doSetNewPwd(){
 function doLogout(){U=null;weekOffset=0;rmWeekOffset=0;selectedStaffId=null;selectedDayIdx=null;rmDayIdx=null;selectedRoomId=null;showPage('login');document.getElementById('li-svc').value='';document.getElementById('li-pwd').value='';}
 function enterApp(){
   document.getElementById('who-av').textContent=initials(U.name);
-  document.getElementById('who-name').textContent=U.name;
+  document.getElementById('who-name').textContent=staffName(U);
   document.getElementById('who-role').textContent=(U.sections?U.sections.name:(U.role==='admin'?'admin':'')).toLowerCase();
   showPage('app');
   loadAll().then(()=>{buildNav();switchTab('home');startNotifLoop();});
@@ -712,6 +715,7 @@ async function loadAll(){
   secs.forEach(s=>getSC(s.name));
   try{DB.groups=await GET('meeting_groups','select=*,meeting_group_members(staff_id)&order=name.asc');}catch(e){DB.groups=[];}
   try{DB.room_blocks=await GET('room_blocks','select=*&order=date_from.asc');}catch(e){DB.room_blocks=[];}
+  try{DB.leaves=await GET('staff_leaves','select=*&order=date_from.asc');}catch(e){DB.leaves=[];}
   if(selectedStaffId==null)selectedStaffId=U.id;
   if(selectedRoomId==null&&DB.rooms.length)selectedRoomId=DB.rooms[0].id;
 }
@@ -748,12 +752,13 @@ function buildNav(){
   });
   // Sidebar footer: user info + actions
   const sbfoot=document.getElementById('sb-footer');
-  const roleLabel=(U.sections?U.sections.name:(U.role==='admin'?'admin':'')).toLowerCase();
+  const roleLabel=(U.designation?esc(U.designation)+' · ':'')+((U.sections?U.sections.name:(U.role==='admin'?'admin':'')).toLowerCase());
   sbfoot.innerHTML=`<div class="sb-user">
     <div class="avatar" style="width:30px;height:30px;font-size:11px">${initials(U.name)}</div>
-    <div class="sb-user-info"><div class="sb-user-name">${esc(U.name)}</div><div class="sb-user-role">${esc(roleLabel)}</div></div>
+    <div class="sb-user-info"><div class="sb-user-name">${esc(staffName(U))}</div><div class="sb-user-role">${esc(roleLabel)}</div></div>
   </div>
   <button class="sb-footer-btn" onclick="openChangePwdModal()"><i class="ti ti-lock" aria-hidden="true"></i>Change password</button>
+  <button class="sb-footer-btn" onclick="openMyLeaveModal()"><i class="ti ti-beach" aria-hidden="true"></i>My leave</button>
   <button class="sb-footer-btn" onclick="toggleTheme()"><i class="ti ti-moon" id="theme-icon-sb" aria-hidden="true"></i>Toggle theme</button>
   <button class="sb-footer-btn" onclick="doLogout()"><i class="ti ti-logout" aria-hidden="true"></i>Sign out</button>`;
   // Show Pre-book button for admin only
@@ -781,7 +786,7 @@ function switchTab(id){
 function buildStaffSelect(){
   const sel=document.getElementById('staff-sel');
   const others=visibleStaff().filter(s=>s.id!==U.id);
-  sel.innerHTML='<option value="">— My schedule —</option>'+others.map(s=>`<option value="${s.id}">${esc(s.name)}${s.sections?' · '+esc(s.sections.name):''}</option>`).join('');
+  sel.innerHTML='<option value="">— My schedule —</option>'+others.map(s=>`<option value="${s.id}">${esc(staffName(s))}${s.sections?' · '+esc(s.sections.name):''}</option>`).join('');
   sel.value=selectedStaffId&&selectedStaffId!==U.id?String(selectedStaffId):'';
 }
 function onStaffChange(){
@@ -902,7 +907,7 @@ async function renderCal(){
   const viewing=getViewingUser();
   const isViewingSelf=viewing.id===U.id;
   const ey=document.getElementById('cal-eyebrow');
-  ey.textContent=isViewingSelf?`${(U.sections?U.sections.name:'').toUpperCase()} · CALENDAR`:`VIEWING: ${viewing.name.toUpperCase()}`;
+  ey.textContent=isViewingSelf?`${(U.sections?U.sections.name:'').toUpperCase()} · CALENDAR`:`VIEWING: ${staffName(viewing).toUpperCase()}`;
 
   let meetings=[];
   try{meetings=await GET('meetings',`select=*,participants(*)&date=gte.${s}&date=lte.${e}&order=start_slot.asc`);}catch(e_){console.error(e_);}
@@ -1080,7 +1085,10 @@ function openNewMeetingModal(preDate,preSlot,preRoomId){
       <div class="section-title">Participants</div>
       <div id="nm-participants" class="stack" style="gap:6px"></div>
       <div class="r2" style="margin-top:8px">
-        <div class="field"><label>Add staff</label><select id="nm-add-staff"><option value="">— select —</option>${staffOptionList()}</select></div>
+        <div class="field"><label>Add staff</label>
+          <input id="nm-staff-q" placeholder="Search by name or service no…" oninput="filterStaffSel(this.value)" autocomplete="off" style="margin-bottom:5px"/>
+          <select id="nm-add-staff" size="4" style="height:auto;min-height:80px"><option value="">— search above —</option></select>
+        </div>
         <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addStaffParticipant()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
       </div>
       ${groupSelectBlock()}
@@ -1149,9 +1157,14 @@ async function addStaffParticipant(){
   const sel=document.getElementById('nm-add-staff');const id=parseInt(sel.value);if(!id)return;
   if(window._mparticipants.some(p=>p.staff_id===id)){showToast('Already added.');return;}
   const s=DB.staff.find(x=>x.id===id);if(!s)return;
-  const p={staff_id:id,name:s.name,email:s.email||'',is_external:false,rsvp:'pending'};
+  const p={staff_id:id,name:staffName(s),email:s.email||'',is_external:false,rsvp:'pending'};
   window._mparticipants.push(p);
   sel.value='';renderParticipantList();
+  const dateEl=document.getElementById('nm-date');
+  if(dateEl&&dateEl.value){
+    const lv=staffOnLeave(id,dateEl.value);
+    if(lv){p.onLeave=lv;showToast(`${staffName(s)} is on ${lv.leave_type} on this date — added anyway`);}
+  }
   await checkParticipantBusy(p);
 }
 async function addGroupParticipants(){
@@ -1163,7 +1176,7 @@ async function addGroupParticipants(){
     const sid=mem.staff_id;
     if(window._mparticipants.some(p=>p.staff_id===sid))return;
     const s=DB.staff.find(x=>x.id===sid);if(!s)return;
-    window._mparticipants.push({staff_id:sid,name:s.name,email:s.email||'',is_external:false,rsvp:'pending'});added++;
+    window._mparticipants.push({staff_id:sid,name:staffName(s),email:s.email||'',is_external:false,rsvp:'pending'});added++;
   });
   sel.value='';renderParticipantList();
   showToast(added?`Added ${added} member(s) from ${g.name}`:'All members already added');
@@ -1199,11 +1212,16 @@ function addExtParticipant(){
 function removeParticipant(idx){window._mparticipants.splice(idx,1);renderParticipantList();}
 function refreshStaffDropdown(){
   const sel=document.getElementById('nm-add-staff');if(!sel)return;
+  const q=(document.getElementById('nm-staff-q')||{}).value||'';
+  filterStaffSel(q);
+}
+function filterStaffSel(q){
+  const sel=document.getElementById('nm-add-staff');if(!sel)return;
   const addedIds=new Set((window._mparticipants||[]).filter(p=>p.staff_id).map(p=>p.staff_id));
-  sel.innerHTML='<option value="">— select —</option>'+
-    DB.staff.filter(s=>s.id!==U.id&&!addedIds.has(s.id))
-      .map(s=>`<option value="${s.id}">${esc(s.name)}${s.sections?' · '+esc(s.sections.name):''}</option>`)
-      .join('');
+  const filtered=DB.staff.filter(s=>s.id!==U.id&&!addedIds.has(s.id)&&(!q||staffName(s).toLowerCase().includes(q.toLowerCase())||(s.svc_no||'').toLowerCase().includes(q.toLowerCase())));
+  sel.innerHTML=filtered.length
+    ?filtered.map(s=>`<option value="${s.id}">${esc(staffName(s))} · ${s.sections?esc(s.sections.name):''}</option>`).join('')
+    :'<option value="" disabled>No staff found</option>';
 }
 function renderParticipantList(){
   const c=document.getElementById('nm-participants');if(!c)return;
@@ -1212,7 +1230,7 @@ function renderParticipantList(){
     const isSelf=p.staff_id===U.id;
     return`<div class="prow">
       <div class="prow-avatar" style="background:${p.is_external?'var(--ext-bg)':'var(--accent-bg)'};color:${p.is_external?'var(--ext-ink)':'var(--accent-ink)'}">${initials(p.name)}</div>
-      <div style="flex:1;min-width:0"><div class="prow-name">${esc(p.name)}</div><div class="prow-role">${p.is_external?'External guest':(p.busy?'<span style="color:var(--warn-ink)">⚠ Busy at this time</span>':'')}</div></div>
+      <div style="flex:1;min-width:0"><div class="prow-name">${esc(p.name)}</div><div class="prow-role">${p.is_external?'External guest':(p.onLeave?'<span style="color:var(--warn-ink)">🏖 On '+esc(p.onLeave.leave_type)+'</span>':(p.busy?'<span style="color:var(--warn-ink)">⚠ Busy at this time</span>':''))}</div></div>
       ${p.rsvp==='accepted'&&isSelf?'<span class="badge b-good">You</span>':''}
       ${!isSelf?`<button class="prow-rm" onclick="removeParticipant(${i})"><i class="ti ti-x" aria-hidden="true"></i></button>`:''}
     </div>`;
@@ -1335,9 +1353,10 @@ function viewMeetingModal(m){
     <div class="stack" style="gap:5px;max-height:220px;overflow-y:auto">
     ${ps.map(p=>{
       const att=p.attendance;
+      const lv=!p.is_external&&p.staff_id?staffOnLeave(p.staff_id,m.date):null;
       return`<div class="prow">
       <div class="prow-avatar" style="background:${p.is_external?'var(--ext-bg)':'var(--accent-bg)'};color:${p.is_external?'var(--ext-ink)':'var(--accent-ink)'}">${initials(p.name)}</div>
-      <div style="flex:1;min-width:0"><div class="prow-name">${esc(p.name)}</div><div class="prow-role"><span class="rsvp-dot rsvp-${p.rsvp}" style="display:inline-block;margin-right:4px"></span>${p.rsvp}${p.rsvp_note?' · '+esc(p.rsvp_note):''}</div></div>
+      <div style="flex:1;min-width:0"><div class="prow-name">${esc(p.name)}</div><div class="prow-role"><span class="rsvp-dot rsvp-${p.rsvp}" style="display:inline-block;margin-right:4px"></span>${p.rsvp}${p.rsvp_note?' · '+esc(p.rsvp_note):''}${lv?' · <span style="color:var(--warn-ink)">🏖 '+esc(lv.leave_type)+'</span>':''}</div></div>
       ${canMarkAttendance?`<div class="att-seg">
         <button class="att-btn ${att==='present'?'on-present':''}" title="Present" onclick="markAttendance(${p.id},'present',${m.id})">P</button>
         <button class="att-btn ${att==='late'?'on-late':''}" title="Late" onclick="markAttendance(${p.id},'late',${m.id})">L</button>
@@ -1484,7 +1503,10 @@ function editMeetingModal(m){
       <div class="section-title">Participants</div>
       <div id="nm-participants" class="stack" style="gap:6px"></div>
       <div class="r2" style="margin-top:8px">
-        <div class="field"><label>Add staff</label><select id="nm-add-staff"><option value="">— select —</option>${staffOptionList()}</select></div>
+        <div class="field"><label>Add staff</label>
+          <input id="nm-staff-q" placeholder="Search by name or service no…" oninput="filterStaffSel(this.value)" autocomplete="off" style="margin-bottom:5px"/>
+          <select id="nm-add-staff" size="4" style="height:auto;min-height:80px"><option value="">— search above —</option></select>
+        </div>
         <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addStaffParticipant()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
       </div>
       ${groupSelectBlock()}
@@ -2062,7 +2084,7 @@ async function renderAdmin(){
     const tgBadge=s.telegram_chat_id?'<span class="badge b-good" title="Telegram linked"><i class="ti ti-brand-telegram"></i> Linked</span>':'<span style="color:var(--faint);font-size:11px">—</span>';
     return`<tr>
       <td class="mono">${s.svc_no}</td>
-      <td style="font-weight:600">${esc(s.name)}</td>
+      <td style="font-weight:600">${esc(staffName(s))}</td><td style="color:var(--dim);font-size:12px">${esc(s.designation||'—')}</td>
       <td style="color:var(--dim);font-size:12px">${esc(s.email||'—')}</td>
       <td><span class="tag" style="background:${c.bg};color:${c.tx}">${s.sections?esc(s.sections.name):'—'}</span></td>
       <td>${s.role==='admin'?'<span class="badge b-accent">Admin</span>':'<span class="badge b-muted">Staff</span>'}</td>
@@ -2074,7 +2096,7 @@ async function renderAdmin(){
         <button class="btn btn-sm" onclick="openModal('reset-pwd','${s.svc_no}')"><i class="ti ti-lock" aria-hidden="true"></i></button>
         <button class="btn btn-sm ${s.active?'btn-warn':'btn-accent'}" onclick="toggleStaff(${s.id},${s.active})">${s.active?'Deactivate':'Activate'}</button>
       </div></td></tr>`;
-  }).join('')||'<tr><td colspan="9" style="color:var(--faint);text-align:center;padding:12px">No staff</td></tr>';
+  }).join('')||'<tr><td colspan="10" style="color:var(--faint);text-align:center;padding:12px">No staff</td></tr>';
 }
 async function delSection(id,name){if(!confirm(`Remove "${name}"?`))return;try{await DEL('sections','id=eq.'+id);await loadAll();renderAdmin();showToast('Removed');}catch(e){alert(e.message);}}
 async function delRoom(id){if(!confirm('Remove this room?'))return;try{await DEL('rooms','id=eq.'+id);await loadAll();renderAdmin();showToast('Removed');}catch(e){alert(e.message);}}
@@ -2125,6 +2147,10 @@ function openModal(type,id){
         <div class="r2"><div class="field"><label>Service number</label><input id="m-sv" placeholder="10001"/></div><div class="field"><label>Temp password</label><input type="text" id="m-pw" placeholder="min 8 chars + number"/></div></div>
         <div style="font-size:11px;color:var(--faint)">Min 8 chars, one letter and one number. Staff will set their own on first login.</div>
         <div class="field"><label>Full name</label><input id="m-fn"/></div>
+        <div class="r2">
+          <div class="field"><label>Rank (short)</label><input id="m-rk" placeholder="e.g. SPO"/></div>
+          <div class="field"><label>Designation</label><input id="m-dg" placeholder="e.g. Senior Police Officer"/></div>
+        </div>
         <div class="field"><label>Email <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label><input type="email" id="m-em"/></div>
         <div class="field"><label>Telegram Chat ID <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label><input id="m-tg" placeholder="e.g. 123456789"/></div>
         <div class="field"><label>Section</label><select id="m-ss">${DB.sections.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>
@@ -2139,6 +2165,10 @@ function openModal(type,id){
       <div class="modal-body"><div class="stack">
         <div class="field"><label>Service no.</label><input readonly value="${s.svc_no}"/></div>
         <div class="field"><label>Full name</label><input id="m-fn" value="${esc(s.name)}"/></div>
+        <div class="r2">
+          <div class="field"><label>Rank (short)</label><input id="m-rk" value="${esc(s.rank_short||'')}"/></div>
+          <div class="field"><label>Designation</label><input id="m-dg" value="${esc(s.designation||'')}"/></div>
+        </div>
         <div class="field"><label>Email</label><input type="email" id="m-em" value="${esc(s.email||'')}"/></div>
         <div class="field"><label>Telegram Chat ID</label><input id="m-tg" value="${esc(s.telegram_chat_id||'')}" placeholder="e.g. 123456789"/></div>
         <div class="field"><label>Section</label><select id="m-ss">${DB.sections.map(sec=>`<option value="${sec.id}"${sec.id===s.section_id?' selected':''}>${esc(sec.name)}</option>`).join('')}</select></div>
@@ -2196,6 +2226,8 @@ async function saveStaff(){
   const svc_no=document.getElementById('m-sv').value.trim().toUpperCase();
   const password=document.getElementById('m-pw').value.trim();
   const name=document.getElementById('m-fn').value.trim();
+  const rank_short=document.getElementById('m-rk').value.trim()||null;
+  const designation=document.getElementById('m-dg').value.trim()||null;
   const email=document.getElementById('m-em').value.trim();
   const telegram_chat_id=document.getElementById('m-tg').value.trim()||null;
   const section_id=parseInt(document.getElementById('m-ss').value);
@@ -2204,10 +2236,12 @@ async function saveStaff(){
   const can_create_groups=document.getElementById('m-groups').checked;
   if(!svc_no||!password||!name){alert('Fill all required fields.');return;}
   const issue=pwdIssue(password);if(issue){alert(issue);return;}
-  try{const hp=await hashPwd(password);await POST('staff',{svc_no,name,email,telegram_chat_id,section_id,password:hp,role,active:true,must_reset_password:true,can_view_all,can_create_groups});await loadAll();closeModal();renderAdmin();showToast('Staff created — they\'ll set their own password on first login');}catch(e){alert(e.message);}
+  try{const hp=await hashPwd(password);await POST('staff',{svc_no,name,rank_short,designation,email,telegram_chat_id,section_id,password:hp,role,active:true,must_reset_password:true,can_view_all,can_create_groups});await loadAll();closeModal();renderAdmin();showToast('Staff created — they\'ll set their own password on first login');}catch(e){alert(e.message);}
 }
 async function updateStaff(svc_no){
   const name=document.getElementById('m-fn').value.trim();
+  const rank_short=document.getElementById('m-rk').value.trim()||null;
+  const designation=document.getElementById('m-dg').value.trim()||null;
   const email=document.getElementById('m-em').value.trim();
   const telegram_chat_id=document.getElementById('m-tg').value.trim()||null;
   const section_id=parseInt(document.getElementById('m-ss').value);
@@ -2215,7 +2249,7 @@ async function updateStaff(svc_no){
   const can_view_all=document.getElementById('m-viewall').checked;
   const can_create_groups=document.getElementById('m-groups').checked;
   try{
-    await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc_no),{name,email,telegram_chat_id,section_id,role,can_view_all,can_create_groups});
+    await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc_no),{name,rank_short,designation,email,telegram_chat_id,section_id,role,can_view_all,can_create_groups});
     if(U.svc_no===svc_no){U.can_view_all=can_view_all;U.can_create_groups=can_create_groups;U.role=role;}
     await loadAll();closeModal();renderAdmin();showToast('Staff updated');
   }catch(e){alert(e.message);}
@@ -2383,6 +2417,48 @@ async function doChangePwd(){
     closeModal();showToast('Password changed successfully');
   }catch(e){showAlert(err,'Error: '+e.message);}
   finally{if(btn){btn.disabled=false;btn.innerHTML='Update password';}}
+}
+
+/* =================== LEAVE MANAGEMENT =================== */
+function openMyLeaveModal(){
+  const myLeaves=(DB.leaves||[]).filter(l=>l.staff_id===U.id).sort((a,b)=>a.date_from.localeCompare(b.date_from));
+  const typeOpts=LEAVE_TYPES.map(t=>`<option>${t}</option>`).join('');
+  const leaveRows=myLeaves.length?myLeaves.map(l=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
+    <div style="flex:1"><div style="font-weight:600;font-size:13px">${esc(l.leave_type)}</div><div style="font-size:12px;color:var(--dim)">${l.date_from} → ${l.date_to}${l.notes?' · '+esc(l.notes):''}</div></div>
+    <button class="btn btn-sm btn-danger" onclick="delLeave(${l.id})"><i class="ti ti-trash" aria-hidden="true"></i></button>
+  </div>`).join(''):`<div style="color:var(--faint);font-size:13px;padding:12px 0">No leave recorded.</div>`;
+  showModal(`<div class="modal-head"><div class="modal-title">My leave</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+<div class="modal-body"><div class="stack">
+<div class="section-title">Recorded leave</div>
+${leaveRows}
+<div class="hr"></div>
+<div class="section-title">Add leave</div>
+<div class="field"><label>Leave type</label><select id="lv-type">${typeOpts}</select></div>
+<div class="r2"><div class="field"><label>From</label><input type="date" id="lv-from"/></div><div class="field"><label>To</label><input type="date" id="lv-to"/></div></div>
+<div class="field"><label>Notes <span style="font-weight:400;text-transform:none">(optional)</span></label><input id="lv-notes" placeholder="e.g. Annual family leave"/></div>
+<div id="lv-err" class="alert a-bad hidden"></div>
+</div></div>
+<div class="modal-foot"><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-accent" onclick="saveLeave()">Add leave</button></div>`);
+}
+async function saveLeave(){
+  const ltype=document.getElementById('lv-type').value;
+  const from=document.getElementById('lv-from').value;
+  const to=document.getElementById('lv-to').value;
+  const notes=document.getElementById('lv-notes').value.trim();
+  const err=document.getElementById('lv-err');
+  if(!from||!to){showAlert(err,'Please set both dates.');return;}
+  if(to<from){showAlert(err,'End date must be on or after start date.');return;}
+  try{
+    await POST('staff_leaves',{staff_id:U.id,leave_type:ltype,date_from:from,date_to:to,notes:notes||null,created_by:U.id});
+    await loadAll();openMyLeaveModal();showToast('Leave added');
+  }catch(e){showAlert(err,e.message);}
+}
+async function delLeave(id){
+  if(!confirm('Remove this leave record?'))return;
+  try{await DEL('staff_leaves','id=eq.'+id);await loadAll();openMyLeaveModal();showToast('Leave removed');}catch(e){alert(e.message);}
+}
+function staffOnLeave(staffId,dateStr){
+  return (DB.leaves||[]).find(l=>l.staff_id===staffId&&l.date_from<=dateStr&&l.date_to>=dateStr)||null;
 }
 
 /* =================== INIT =================== */

@@ -173,6 +173,25 @@ CREATE TABLE IF NOT EXISTS room_blocks (
 ALTER TABLE room_blocks DISABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS room_blocks_room_idx ON room_blocks(room_id);
 
+-- Staff rank and designation
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS rank_short  text;
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS designation text;
+
+-- Staff leaves
+CREATE TABLE IF NOT EXISTS staff_leaves (
+  id         serial  PRIMARY KEY,
+  staff_id   integer REFERENCES staff(id) ON DELETE CASCADE,
+  leave_type text    NOT NULL,
+  date_from  date    NOT NULL,
+  date_to    date    NOT NULL,
+  notes      text,
+  created_by integer REFERENCES staff(id),
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE staff_leaves DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS staff_leaves_staff_idx ON staff_leaves(staff_id);
+CREATE INDEX IF NOT EXISTS staff_leaves_dates_idx ON staff_leaves(date_from, date_to);
+
 -- ─────────────────────────── DONE ─────────────────────────────────
 -- After running this, open the app, paste your Supabase URL + anon key,
 -- then sign in with service number SVC000 / Admin1234.
