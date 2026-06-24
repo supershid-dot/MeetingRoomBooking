@@ -1034,77 +1034,83 @@ function openNewMeetingModal(preDate,preSlot,preRoomId){
   window._editMeetingId=null;window._mtype='internal';window._mprivacy='public';window._mmode='physical';window._mnoroom=false;window._mrecur='';
   window._mparticipants=[{staff_id:U.id,name:staffName(U),email:U.email||'',is_external:false,rsvp:'accepted'}];
 
-  showModal(`
+  showBigModal(`
   <div class="modal-head"><div class="modal-title">Schedule meeting</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
-  <div class="modal-body"><div class="stack">
-    <div class="field"><label>Title</label><input id="nm-title" placeholder="e.g. Q3 Review"/></div>
-    <div>
-      <div class="section-title">Meeting type</div>
-      <div class="pill-group">
-        <button class="pill active" id="pill-int" onclick="setMType('internal')"><i class="ti ti-door" aria-hidden="true"></i> Internal</button>
-        <button class="pill" id="pill-ext" onclick="setMType('external')"><i class="ti ti-building" aria-hidden="true"></i> External</button>
-      </div>
-    </div>
-    <div>
-      <div class="section-title">Format</div>
-      <div class="pill-group">
-        <button class="pill active" id="pill-phys" onclick="setMMode('physical')"><i class="ti ti-map-pin" aria-hidden="true"></i> In person</button>
-        <button class="pill" id="pill-online" onclick="setMMode('online')"><i class="ti ti-video" aria-hidden="true"></i> Online</button>
-        <button class="pill" id="pill-both" onclick="setMMode('both')"><i class="ti ti-device-laptop" aria-hidden="true"></i> Hybrid</button>
-      </div>
-    </div>
-    <div id="nm-internal-place">
-      <label class="toggle-row" style="margin-bottom:8px"><input type="checkbox" id="nm-noroom" onchange="onNoRoomToggle()"/><span>No specific room — enter a location instead</span></label>
-      <div id="nm-room-field" class="field"><label>Meeting room</label><select id="nm-room" onchange="refreshDurationOptions()">${roomOpts}</select></div>
-    </div>
-    <div id="nm-loc-field" class="field hidden"><label id="nm-loc-label">Location</label><input id="nm-loc" placeholder="e.g. City Hall, Block B"/></div>
-    <div id="nm-link-field" class="field hidden"><label>Meeting link</label><input id="nm-link" placeholder="https://meet.example.com/…"/></div>
-    <div class="r2">
-      <div class="field"><label>Date</label><input type="date" id="nm-date" value="${preD}" onchange="refreshDurationOptions()"/></div>
-      <div class="field"><label>Start time</label><select id="nm-start" onchange="refreshDurationOptions()">${startTimeOptions(preS)}</select></div>
-    </div>
-    <div class="field"><label>Duration (min. 15 min)</label><select id="nm-dur">${durationOptions(1,DAY_SLOTS-preS)}</select></div>
-    <div>
-      <div class="section-title">Recurrence</div>
-      <div class="pill-group" id="recur-pills">
-        <button class="pill active" onclick="setRecur('',this)">None</button>
-        <button class="pill" onclick="setRecur('weekly',this)">Weekly</button>
-        <button class="pill" onclick="setRecur('biweekly',this)">Every 2 weeks</button>
-        <button class="pill" onclick="setRecur('monthly',this)">Monthly</button>
-      </div>
-      <div id="nm-recur-end" class="field hidden" style="margin-top:8px">
-        <label>Repeat until</label><input type="date" id="nm-recur-until"/>
-      </div>
-    </div>
-    <div>
-      <div class="section-title">Privacy</div>
-      <div class="pill-group">
-        <button class="pill active" id="pill-pub" onclick="setPrivacy('public')"><i class="ti ti-eye" aria-hidden="true"></i> Public</button>
-        <button class="pill" id="pill-priv" onclick="setPrivacy('private')"><i class="ti ti-eye-off" aria-hidden="true"></i> Private</button>
-      </div>
-      <div style="font-size:11px;color:var(--faint);margin-top:5px">Public: title &amp; time visible to all. Private: only visible to participants.</div>
-    </div>
-    <div class="field"><label>Agenda / notes</label><textarea id="nm-notes" placeholder="Optional agenda or description"></textarea></div>
-    <div>
-      <div class="section-title">Participants</div>
-      <div id="nm-participants" class="stack" style="gap:6px"></div>
-      <div class="r2" style="margin-top:8px">
-        <div class="field"><label>Add staff</label>
-          <input id="nm-staff-q" placeholder="Search by name or service no…" oninput="filterStaffSel(this.value)" autocomplete="off" style="margin-bottom:5px"/>
-          <select id="nm-add-staff" size="4" style="height:auto;min-height:80px"><option value="">— search above —</option></select>
+  <div class="modal-body">
+    <div class="vm-grid">
+      <div class="vm-left">
+        <div class="field"><label>Title</label><input id="nm-title" placeholder="e.g. Q3 Review"/></div>
+        <div>
+          <div class="section-title">Meeting type</div>
+          <div class="pill-group">
+            <button class="pill active" id="pill-int" onclick="setMType('internal')"><i class="ti ti-door" aria-hidden="true"></i> Internal</button>
+            <button class="pill" id="pill-ext" onclick="setMType('external')"><i class="ti ti-building" aria-hidden="true"></i> External</button>
+          </div>
         </div>
-        <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addStaffParticipant()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
+        <div>
+          <div class="section-title">Format</div>
+          <div class="pill-group">
+            <button class="pill active" id="pill-phys" onclick="setMMode('physical')"><i class="ti ti-map-pin" aria-hidden="true"></i> In person</button>
+            <button class="pill" id="pill-online" onclick="setMMode('online')"><i class="ti ti-video" aria-hidden="true"></i> Online</button>
+            <button class="pill" id="pill-both" onclick="setMMode('both')"><i class="ti ti-device-laptop" aria-hidden="true"></i> Hybrid</button>
+          </div>
+        </div>
+        <div id="nm-internal-place">
+          <label class="toggle-row" style="margin-bottom:8px"><input type="checkbox" id="nm-noroom" onchange="onNoRoomToggle()"/><span>No specific room — enter a location instead</span></label>
+          <div id="nm-room-field" class="field"><label>Meeting room</label><select id="nm-room" onchange="refreshDurationOptions()">${roomOpts}</select></div>
+        </div>
+        <div id="nm-loc-field" class="field hidden"><label id="nm-loc-label">Location</label><input id="nm-loc" placeholder="e.g. City Hall, Block B"/></div>
+        <div id="nm-link-field" class="field hidden"><label>Meeting link</label><input id="nm-link" placeholder="https://meet.example.com/…"/></div>
+        <div class="r2">
+          <div class="field"><label>Date</label><input type="date" id="nm-date" value="${preD}" onchange="refreshDurationOptions()"/></div>
+          <div class="field"><label>Start time</label><select id="nm-start" onchange="refreshDurationOptions()">${startTimeOptions(preS)}</select></div>
+        </div>
+        <div class="field"><label>Duration (min. 15 min)</label><select id="nm-dur">${durationOptions(1,DAY_SLOTS-preS)}</select></div>
+        <div>
+          <div class="section-title">Recurrence</div>
+          <div class="pill-group" id="recur-pills">
+            <button class="pill active" onclick="setRecur('',this)">None</button>
+            <button class="pill" onclick="setRecur('weekly',this)">Weekly</button>
+            <button class="pill" onclick="setRecur('biweekly',this)">Every 2 weeks</button>
+            <button class="pill" onclick="setRecur('monthly',this)">Monthly</button>
+          </div>
+          <div id="nm-recur-end" class="field hidden" style="margin-top:8px">
+            <label>Repeat until</label><input type="date" id="nm-recur-until"/>
+          </div>
+        </div>
       </div>
-      ${groupSelectBlock()}
-      <div class="section-title" style="margin-top:10px">External guests</div>
-      <div class="r2">
-        <div class="field"><label>Name</label><input id="nm-ext-name" placeholder="Guest name"/></div>
-        <div class="field"><label>Email</label><input type="email" id="nm-ext-email" placeholder="email@example.com"/></div>
+      <div class="vm-right">
+        <div>
+          <div class="section-title">Privacy</div>
+          <div class="pill-group">
+            <button class="pill active" id="pill-pub" onclick="setPrivacy('public')"><i class="ti ti-eye" aria-hidden="true"></i> Public</button>
+            <button class="pill" id="pill-priv" onclick="setPrivacy('private')"><i class="ti ti-eye-off" aria-hidden="true"></i> Private</button>
+          </div>
+          <div style="font-size:11px;color:var(--faint);margin-top:5px">Public: title &amp; time visible to all. Private: only visible to participants.</div>
+        </div>
+        <div class="field" style="margin-top:14px"><label>Agenda / notes</label><textarea id="nm-notes" placeholder="Optional agenda or description"></textarea></div>
+        <div style="margin-top:14px">
+          <div class="section-title">Participants</div>
+          <div id="nm-participants" class="stack" style="gap:6px"></div>
+          <div class="r2" style="margin-top:8px">
+            <div class="field"><label>Add staff</label>
+              <input id="nm-staff-q" placeholder="Search by name or service no…" oninput="filterStaffSel(this.value)" autocomplete="off" style="margin-bottom:5px"/>
+              <select id="nm-add-staff" size="4" style="height:auto;min-height:80px"><option value="">— search above —</option></select>
+            </div>
+            <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addStaffParticipant()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
+          </div>
+          ${groupSelectBlock()}
+          <div class="section-title" style="margin-top:10px">External guests</div>
+          <div class="r2">
+            <div class="field"><label>Name</label><input id="nm-ext-name" placeholder="Guest name"/></div>
+            <div class="field"><label>Email</label><input type="email" id="nm-ext-email" placeholder="email@example.com"/></div>
+          </div>
+          <button class="btn btn-sm" style="margin-top:6px" onclick="addExtParticipant()"><i class="ti ti-user-plus" aria-hidden="true"></i>Add guest</button>
+        </div>
+        <div id="nm-err" class="alert a-bad hidden" style="margin-top:12px"></div>
       </div>
-      <button class="btn btn-sm" style="margin-top:6px" onclick="addExtParticipant()"><i class="ti ti-user-plus" aria-hidden="true"></i>Add guest</button>
     </div>
-    <div id="nm-err" class="alert a-bad hidden"></div>
-  </div></div>
+  </div>
   <div class="modal-foot">
     <button class="btn" onclick="closeModal()">Cancel</button>
     <button class="btn btn-accent" id="nm-save" onclick="saveMeeting()">Schedule</button>
@@ -1472,66 +1478,72 @@ function editMeetingModal(m){
   window._editMeetingId=m.id;
   window._mtype=m.type;window._mprivacy=m.privacy||'public';window._mmode=m.meeting_mode||'physical';window._mnoroom=!!m.no_room;
   window._mparticipants=ps.map(p=>({staff_id:p.staff_id,name:p.name,email:p.email,is_external:p.is_external,rsvp:p.rsvp,rsvp_note:p.rsvp_note}));
-  showModal(`
+  showBigModal(`
   <div class="modal-head"><div class="modal-title">Edit meeting</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
-  <div class="modal-body"><div class="stack">
-    <div class="field"><label>Title</label><input id="nm-title" value="${esc(m.title)}"/></div>
-    <div>
-      <div class="section-title">Type</div>
-      <div class="pill-group">
-        <button class="pill${m.type==='internal'?' active':''}" id="pill-int" onclick="setMType('internal')"><i class="ti ti-door" aria-hidden="true"></i> Internal</button>
-        <button class="pill${m.type==='external'?' active':''}" id="pill-ext" onclick="setMType('external')"><i class="ti ti-building" aria-hidden="true"></i> External</button>
-      </div>
-    </div>
-    <div>
-      <div class="section-title">Format</div>
-      <div class="pill-group">
-        <button class="pill${m.meeting_mode!=='online'&&m.meeting_mode!=='both'?' active':''}" id="pill-phys" onclick="setMMode('physical')"><i class="ti ti-map-pin" aria-hidden="true"></i> In person</button>
-        <button class="pill${m.meeting_mode==='online'?' active':''}" id="pill-online" onclick="setMMode('online')"><i class="ti ti-video" aria-hidden="true"></i> Online</button>
-        <button class="pill${m.meeting_mode==='both'?' active':''}" id="pill-both" onclick="setMMode('both')"><i class="ti ti-device-laptop" aria-hidden="true"></i> Hybrid</button>
-      </div>
-    </div>
-    <div id="nm-internal-place">
-      <label class="toggle-row" style="margin-bottom:8px"><input type="checkbox" id="nm-noroom" ${m.no_room?'checked':''} onchange="onNoRoomToggle()"/><span>No specific room — enter a location instead</span></label>
-      <div id="nm-room-field" class="field"><label>Meeting room</label><select id="nm-room" onchange="refreshDurationOptions()">${roomOpts}</select></div>
-    </div>
-    <div id="nm-loc-field" class="field hidden"><label id="nm-loc-label">Location</label><input id="nm-loc" value="${esc(m.no_room||m.type==='external'?(m.location||''):'')}"/></div>
-    <div id="nm-link-field" class="field hidden"><label>Meeting link</label><input id="nm-link" value="${esc(m.meeting_link||'')}" placeholder="https://meet.example.com/…"/></div>
-    <div class="r2">
-      <div class="field"><label>Date</label><input type="date" id="em-date" value="${m.date}" onchange="refreshDurationOptions()"/></div>
-      <div class="field"><label>Start</label><select id="nm-start" onchange="refreshDurationOptions()">${startTimeOptions(m.start_slot)}</select></div>
-    </div>
-    <div class="field"><label>Duration</label><select id="nm-dur">${durationOptions(m.duration,DAY_SLOTS-m.start_slot)}</select></div>
-    <div>
-      <div class="section-title">Privacy</div>
-      <div class="pill-group">
-        <button class="pill${m.privacy!=='private'?' active':''}" id="pill-pub" onclick="setPrivacy('public')"><i class="ti ti-eye" aria-hidden="true"></i> Public</button>
-        <button class="pill${m.privacy==='private'?' active':''}" id="pill-priv" onclick="setPrivacy('private')"><i class="ti ti-eye-off" aria-hidden="true"></i> Private</button>
-      </div>
-    </div>
-    <div class="field"><label>Notes</label><textarea id="nm-notes">${esc(m.notes||'')}</textarea></div>
-    <div>
-      <div class="section-title">Participants</div>
-      <div id="nm-participants" class="stack" style="gap:6px"></div>
-      <div class="r2" style="margin-top:8px">
-        <div class="field"><label>Add staff</label>
-          <input id="nm-staff-q" placeholder="Search by name or service no…" oninput="filterStaffSel(this.value)" autocomplete="off" style="margin-bottom:5px"/>
-          <select id="nm-add-staff" size="4" style="height:auto;min-height:80px"><option value="">— search above —</option></select>
+  <div class="modal-body">
+    <div class="vm-grid">
+      <div class="vm-left">
+        <div class="field"><label>Title</label><input id="nm-title" value="${esc(m.title)}"/></div>
+        <div>
+          <div class="section-title">Type</div>
+          <div class="pill-group">
+            <button class="pill${m.type==='internal'?' active':''}" id="pill-int" onclick="setMType('internal')"><i class="ti ti-door" aria-hidden="true"></i> Internal</button>
+            <button class="pill${m.type==='external'?' active':''}" id="pill-ext" onclick="setMType('external')"><i class="ti ti-building" aria-hidden="true"></i> External</button>
+          </div>
         </div>
-        <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addStaffParticipant()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
+        <div>
+          <div class="section-title">Format</div>
+          <div class="pill-group">
+            <button class="pill${m.meeting_mode!=='online'&&m.meeting_mode!=='both'?' active':''}" id="pill-phys" onclick="setMMode('physical')"><i class="ti ti-map-pin" aria-hidden="true"></i> In person</button>
+            <button class="pill${m.meeting_mode==='online'?' active':''}" id="pill-online" onclick="setMMode('online')"><i class="ti ti-video" aria-hidden="true"></i> Online</button>
+            <button class="pill${m.meeting_mode==='both'?' active':''}" id="pill-both" onclick="setMMode('both')"><i class="ti ti-device-laptop" aria-hidden="true"></i> Hybrid</button>
+          </div>
+        </div>
+        <div id="nm-internal-place">
+          <label class="toggle-row" style="margin-bottom:8px"><input type="checkbox" id="nm-noroom" ${m.no_room?'checked':''} onchange="onNoRoomToggle()"/><span>No specific room — enter a location instead</span></label>
+          <div id="nm-room-field" class="field"><label>Meeting room</label><select id="nm-room" onchange="refreshDurationOptions()">${roomOpts}</select></div>
+        </div>
+        <div id="nm-loc-field" class="field hidden"><label id="nm-loc-label">Location</label><input id="nm-loc" value="${esc(m.no_room||m.type==='external'?(m.location||''):'')}"/></div>
+        <div id="nm-link-field" class="field hidden"><label>Meeting link</label><input id="nm-link" value="${esc(m.meeting_link||'')}" placeholder="https://meet.example.com/…"/></div>
+        <div class="r2">
+          <div class="field"><label>Date</label><input type="date" id="em-date" value="${m.date}" onchange="refreshDurationOptions()"/></div>
+          <div class="field"><label>Start</label><select id="nm-start" onchange="refreshDurationOptions()">${startTimeOptions(m.start_slot)}</select></div>
+        </div>
+        <div class="field"><label>Duration</label><select id="nm-dur">${durationOptions(m.duration,DAY_SLOTS-m.start_slot)}</select></div>
       </div>
-      ${groupSelectBlock()}
-      <div class="r2" style="margin-top:6px">
-        <div class="field"><label>External name</label><input id="nm-ext-name" placeholder="Guest name"/></div>
-        <div class="field"><label>Email</label><input type="email" id="nm-ext-email"/></div>
+      <div class="vm-right">
+        <div>
+          <div class="section-title">Privacy</div>
+          <div class="pill-group">
+            <button class="pill${m.privacy!=='private'?' active':''}" id="pill-pub" onclick="setPrivacy('public')"><i class="ti ti-eye" aria-hidden="true"></i> Public</button>
+            <button class="pill${m.privacy==='private'?' active':''}" id="pill-priv" onclick="setPrivacy('private')"><i class="ti ti-eye-off" aria-hidden="true"></i> Private</button>
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px"><label>Notes</label><textarea id="nm-notes">${esc(m.notes||'')}</textarea></div>
+        <div style="margin-top:14px">
+          <div class="section-title">Participants</div>
+          <div id="nm-participants" class="stack" style="gap:6px"></div>
+          <div class="r2" style="margin-top:8px">
+            <div class="field"><label>Add staff</label>
+              <input id="nm-staff-q" placeholder="Search by name or service no…" oninput="filterStaffSel(this.value)" autocomplete="off" style="margin-bottom:5px"/>
+              <select id="nm-add-staff" size="4" style="height:auto;min-height:80px"><option value="">— search above —</option></select>
+            </div>
+            <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="addStaffParticipant()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
+          </div>
+          ${groupSelectBlock()}
+          <div class="r2" style="margin-top:6px">
+            <div class="field"><label>External name</label><input id="nm-ext-name" placeholder="Guest name"/></div>
+            <div class="field"><label>Email</label><input type="email" id="nm-ext-email"/></div>
+          </div>
+          <button class="btn btn-sm" style="margin-top:5px" onclick="addExtParticipant()"><i class="ti ti-user-plus" aria-hidden="true"></i>Add guest</button>
+        </div>
+        <div class="hr" style="margin-top:16px"></div>
+        <label class="toggle-row"><input type="checkbox" id="em-notify" checked/><span>Notify attendees of these changes</span></label>
+        <div class="field" style="margin-top:10px"><label>Reason / note (optional)</label><input id="em-reason" placeholder="e.g. Postponed due to room conflict"/></div>
+        <div id="nm-err" class="alert a-bad hidden" style="margin-top:10px"></div>
       </div>
-      <button class="btn btn-sm" style="margin-top:5px" onclick="addExtParticipant()"><i class="ti ti-user-plus" aria-hidden="true"></i>Add guest</button>
     </div>
-    <div class="hr"></div>
-    <label class="toggle-row"><input type="checkbox" id="em-notify" checked/><span>Notify attendees of these changes</span></label>
-    <div class="field"><label>Reason / note (optional)</label><input id="em-reason" placeholder="e.g. Postponed due to room conflict"/></div>
-    <div id="nm-err" class="alert a-bad hidden"></div>
-  </div></div>
+  </div>
   <div class="modal-foot">
     <button class="btn" onclick="closeModal()">Cancel</button>
     <button class="btn btn-accent" id="nm-save" onclick="updateMeeting(${m.id})">Save changes</button>
