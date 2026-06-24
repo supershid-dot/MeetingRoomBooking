@@ -531,6 +531,16 @@ tbody tr:hover td{background:var(--panel2)}
           <div style="margin-top:12px"><div class="section-title" style="margin-bottom:6px">Room Blocks</div><div class="tbl-wrap"><table><thead><tr><th>Room</th><th>Dates</th><th>Reason</th><th></th></tr></thead><tbody id="room-blocks-tbody"></tbody></table></div></div>
         </div>
       </div>
+      <div class="panel" style="margin-bottom:14px" id="leave-types-panel">
+        <div class="panel-head"><div class="panel-title"><i class="ti ti-beach" aria-hidden="true"></i>Leave Types</div></div>
+        <div style="padding:12px 16px">
+          <div id="leave-types-list" class="stack" style="gap:0;margin-bottom:12px"></div>
+          <div class="r2" style="align-items:flex-end;margin-top:8px">
+            <div class="field" style="margin:0"><input id="new-leave-type" placeholder="e.g. Compassionate Leave" onkeydown="if(event.key==='Enter')addLeaveType()"/></div>
+            <button class="btn btn-accent btn-sm" onclick="addLeaveType()"><i class="ti ti-plus" aria-hidden="true"></i>Add</button>
+          </div>
+        </div>
+      </div>
       <div class="panel" style="margin-bottom:14px">
         <div class="panel-head"><div class="panel-title"><i class="ti ti-users-group" aria-hidden="true"></i>Meeting Groups</div><button class="btn btn-accent btn-sm" onclick="openModal('add-group')"><i class="ti ti-plus" aria-hidden="true"></i>Add</button></div>
         <div class="tbl-wrap"><table><thead><tr><th>Group</th><th>Members</th><th>Actions</th></tr></thead><tbody id="groups-tbody"></tbody></table></div>
@@ -594,7 +604,7 @@ function pwdIssue(p){if(!p||p.length<10)return'Minimum 10 characters.';if(!/[A-Z
 async function hashPwd(p){const enc=new TextEncoder();const buf=await crypto.subtle.digest('SHA-256',enc.encode(p));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const MODE_LABEL={physical:'In person',online:'Online',both:'Hybrid'};
 const MODE_ICON={physical:'ti-map-pin',online:'ti-video',both:'ti-device-laptop'};
-const LEAVE_TYPES=['Annual Leave','Sick Leave','Emergency Leave','Maternity/Paternity Leave','Study Leave','Unpaid Leave','Other'];
+let LEAVE_TYPES=JSON.parse(localStorage.getItem('mf_leave_types')||'null')||['Annual Leave','Sick Leave','Emergency Leave','Maternity/Paternity Leave','Study Leave','Unpaid Leave','Other'];
 
 /* =================== CALENDAR HOURS =================== */
 let CAL_START=8,CAL_END=20;
@@ -2078,8 +2088,12 @@ async function renderAdmin(){
   document.getElementById('sec-tbody').innerHTML=DB.sections.map(s=>{
     const c=getSC(s.name);
     return`<tr><td><span class="tag" style="background:${c.bg};color:${c.tx}">${esc(s.name)}</span></td>
-    <td><button class="btn btn-danger btn-icon" onclick="delSection(${s.id},'${esc(s.name)}')"><i class="ti ti-trash" aria-hidden="true"></i></button></td></tr>`;
+    <td><div class="acts">
+      <button class="btn btn-warn btn-icon" onclick="openModal('edit-section',${s.id})"><i class="ti ti-edit" aria-hidden="true"></i></button>
+      <button class="btn btn-danger btn-icon" onclick="delSection(${s.id},'${esc(s.name)}')"><i class="ti ti-trash" aria-hidden="true"></i></button>
+    </div></td></tr>`;
   }).join('')||'<tr><td colspan="2" style="color:var(--faint);text-align:center;padding:12px">No sections</td></tr>';
+  renderLeaveTypesAdmin();
 
   document.getElementById('rooms-tbody').innerHTML=DB.rooms.map(r=>`<tr>
     <td style="font-weight:600">${esc(r.name)}</td>
@@ -2133,6 +2147,11 @@ function openModal(type,id){
     showModal(`<div class="modal-head"><div class="modal-title">Add section</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
       <div class="modal-body"><div class="stack"><div class="field"><label>Name</label><input id="m-s" placeholder="e.g. Legal"/></div></div></div>
       <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="saveSection()">Add</button></div>`);
+  } else if(type==='edit-section'){
+    const s=DB.sections.find(x=>x.id===id);if(!s)return;
+    showModal(`<div class="modal-head"><div class="modal-title">Edit section</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+      <div class="modal-body"><div class="stack"><div class="field"><label>Name</label><input id="m-s" value="${esc(s.name)}"/></div></div></div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="saveSection(${id})">Save</button></div>`);
   } else if(type==='add-room'){
     showModal(`<div class="modal-head"><div class="modal-title">Add room</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
       <div class="modal-body"><div class="stack">
@@ -2212,7 +2231,13 @@ function openModal(type,id){
   }
 }
 function endOpts(sel){return Array.from({length:13},(_,i)=>i+8).map(h=>`<option value="${h}"${h===sel?' selected':''}>${h}:00</option>`).join('');}
-async function saveSection(){const name=document.getElementById('m-s').value.trim();if(!name)return;try{await POST('sections',{name});await loadAll();closeModal();renderAdmin();showToast('Section added');}catch(e){alert(e.message);}}
+async function saveSection(id){
+  const name=document.getElementById('m-s').value.trim();if(!name)return;
+  try{
+    if(id){await PATCH('sections','id=eq.'+id,{name});}else{await POST('sections',{name});}
+    await loadAll();closeModal();renderAdmin();showToast(id?'Section updated':'Section added');
+  }catch(e){alert(e.message);}
+}
 async function saveRoom(id){
   const name=document.getElementById('m-rn').value.trim();
   if(!name)return;
@@ -2484,6 +2509,38 @@ async function delLeave(id){
 }
 function staffOnLeave(staffId,dateStr){
   return (DB.leaves||[]).find(l=>l.staff_id===staffId&&l.date_from<=dateStr&&l.date_to>=dateStr)||null;
+}
+
+/* =================== LEAVE TYPE ADMIN =================== */
+function saveLeaveTypes(){localStorage.setItem('mf_leave_types',JSON.stringify(LEAVE_TYPES));}
+function renderLeaveTypesAdmin(){
+  const el=document.getElementById('leave-types-list');if(!el)return;
+  el.innerHTML=LEAVE_TYPES.map((t,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)">
+    <div style="flex:1;font-size:13px">${esc(t)}</div>
+    <div class="acts">
+      <button class="btn btn-warn btn-icon btn-sm" onclick="openEditLeaveType(${i})" title="Rename"><i class="ti ti-edit" aria-hidden="true"></i></button>
+      <button class="btn btn-danger btn-icon btn-sm" onclick="delLeaveType(${i})" title="Delete"><i class="ti ti-trash" aria-hidden="true"></i></button>
+    </div>
+  </div>`).join('')||'<div style="color:var(--faint);font-size:13px;padding:8px 0">No leave types defined.</div>';
+}
+function addLeaveType(){
+  const input=document.getElementById('new-leave-type');
+  const val=input.value.trim();if(!val)return;
+  if(LEAVE_TYPES.map(t=>t.toLowerCase()).includes(val.toLowerCase())){showToast('Already exists');return;}
+  LEAVE_TYPES.push(val);saveLeaveTypes();input.value='';renderLeaveTypesAdmin();showToast('Leave type added');
+}
+function delLeaveType(idx){
+  if(!confirm(`Remove "${LEAVE_TYPES[idx]}"?`))return;
+  LEAVE_TYPES.splice(idx,1);saveLeaveTypes();renderLeaveTypesAdmin();showToast('Removed');
+}
+function openEditLeaveType(idx){
+  showModal(`<div class="modal-head"><div class="modal-title">Edit leave type</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+    <div class="modal-body"><div class="stack"><div class="field"><label>Name</label><input id="lt-name" value="${esc(LEAVE_TYPES[idx])}"/></div></div></div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="saveLeaveType(${idx})">Save</button></div>`);
+}
+function saveLeaveType(idx){
+  const val=document.getElementById('lt-name').value.trim();if(!val)return;
+  LEAVE_TYPES[idx]=val;saveLeaveTypes();closeModal();renderLeaveTypesAdmin();showToast('Updated');
 }
 
 /* =================== INIT =================== */
