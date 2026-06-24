@@ -1681,7 +1681,7 @@ function buildTgMsg(m,type,allParts,extra){
   const by=creatorStaff?staffName(creatorStaff):esc(m.created_by_name||'');
   const extraLine=extra?`\n\n${esc(extra)}`:'';
   if(type==='reminder')
-    return `⏰ <b>${esc(m.title)}</b>\n\n🗓 ${dateStr}\n⏱ ${timeStr}${placeLine}${attendeesLine}\n\nStarts in 30 minutes.`;
+    return `⏰ <b>${esc(m.title)}</b>\n\n🗓 ${dateStr}\n⏱ ${timeStr}${placeLine}${attendeesLine}\n\nMeeting starts at ${fTime(m.start_slot)}.`;
   if(type==='cancellation')
     return `❌ <b>${esc(m.title)}</b>\n\n🗓 ${dateStr}\n⏱ ${timeStr}${extraLine}\n\n— ${by}`;
   if(type==='update')
