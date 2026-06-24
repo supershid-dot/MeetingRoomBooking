@@ -672,7 +672,28 @@ function durationOptions(sel,maxDur){const cap=Math.max(1,Math.min(DAY_SLOTS,max
 function slotsOverlap(aStart,aDur,bStart,bDur){return aStart<bStart+bDur&&bStart<aStart+aDur;}
 function todayStr(){return dStr(new Date());}
 function pwdIssue(p){if(!p||p.length<10)return'Minimum 10 characters.';if(!/[A-Z]/.test(p))return'Must include at least one uppercase letter.';if(!/[a-z]/.test(p))return'Must include at least one lowercase letter.';if(!/[0-9]/.test(p))return'Must include at least one number.';if(!/[^A-Za-z0-9]/.test(p))return'Must include at least one special character (e.g. !@#$%).';return null;}
-async function hashPwd(p){const enc=new TextEncoder();const buf=await crypto.subtle.digest('SHA-256',enc.encode(p));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+/* PBKDF2-SHA256 with random 16-byte salt. Stored as "pbkdf2:<saltHex>:<hashHex>". */
+function _b2h(buf){return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+function _h2b(hex){const b=new Uint8Array(hex.length/2);for(let i=0;i<hex.length;i+=2)b[i/2]=parseInt(hex.slice(i,i+2),16);return b;}
+async function hashPwd(p){
+  const enc=new TextEncoder(),salt=crypto.getRandomValues(new Uint8Array(16));
+  const km=await crypto.subtle.importKey('raw',enc.encode(p),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:100000},km,256);
+  return'pbkdf2:'+_b2h(salt)+':'+_b2h(bits);
+}
+async function _sha256hex(p){const enc=new TextEncoder();return _b2h(await crypto.subtle.digest('SHA-256',enc.encode(p)));}
+/* Verify password against any stored format: pbkdf2:…, SHA-256 hex, or plaintext legacy. */
+async function verifyPwd(plain,stored){
+  if(!stored)return false;
+  if(stored.startsWith('pbkdf2:')){
+    const[,saltHex,hashHex]=stored.split(':');
+    const enc=new TextEncoder(),salt=_h2b(saltHex);
+    const km=await crypto.subtle.importKey('raw',enc.encode(plain),'PBKDF2',false,['deriveBits']);
+    const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:100000},km,256);
+    return _b2h(bits)===hashHex;
+  }
+  return(await _sha256hex(plain))===stored||plain===stored;
+}
 const MODE_LABEL={physical:'In person',online:'Online',both:'Hybrid'};
 const MODE_ICON={physical:'ti-map-pin',online:'ti-video',both:'ti-device-laptop'};
 let LEAVE_TYPES=JSON.parse(localStorage.getItem('mf_leave_types')||'null')||['Annual Leave','Sick Leave','Emergency Leave','Maternity/Paternity Leave','Study Leave','Unpaid Leave','Other'];
@@ -771,16 +792,15 @@ async function doLogin(){
   btn.disabled=true;btn.innerHTML='<div class="spin" style="width:15px;height:15px;border-width:2px;margin:0 auto"></div>';
   err.classList.add('hidden');
   try{
-    const rows=await GET('staff','select=*,sections!staff_section_id_fkey(id,name)&svc_no=ilike.'+encodeURIComponent(svc)+'&active=eq.true');
+    const rows=await GET('staff','select=id,svc_no,name,email,section_id,role,active,rank_short,designation,telegram_chat_id,can_view_all,can_create_groups,must_reset_password,password,sections!staff_section_id_fkey(id,name)&svc_no=ilike.'+encodeURIComponent(svc)+'&active=eq.true');
     if(!rows.length){showAlert(err,'Account not found or inactive.');return;}
-    const hash=await hashPwd(pwd);
-    let user=rows.find(r=>r.password===hash);
-    if(!user){
-      // plaintext fallback for accounts not yet migrated
-      user=rows.find(r=>r.password===pwd);
-      if(user){try{await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc),{password:hash});user.password=hash;}catch(e_){}}
+    const user=rows[0];
+    const ok=await verifyPwd(pwd,user.password);
+    if(!ok){showAlert(err,'Incorrect password.');return;}
+    /* Auto-upgrade legacy hash (SHA-256 or plaintext) to PBKDF2 on successful login */
+    if(!user.password.startsWith('pbkdf2:')){
+      try{const h=await hashPwd(pwd);await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc),{password:h});user.password=h;}catch(e_){}
     }
-    if(!user){showAlert(err,'Incorrect password.');return;}
     U=user;
     if(user.must_reset_password){showPage('newpwd');document.getElementById('np-1').value='';document.getElementById('np-2').value='';document.getElementById('np-err').classList.add('hidden');return;}
     enterApp();
@@ -811,7 +831,7 @@ async function loadAll(){
   const[secs,rooms,staff]=await Promise.all([
     GET('sections','select=*&order=name.asc'),
     GET('rooms','select=*&order=name.asc'),
-    GET('staff','select=*,sections!staff_section_id_fkey(id,name)&order=name.asc&active=eq.true')
+    GET('staff','select=id,svc_no,name,email,section_id,role,active,rank_short,designation,telegram_chat_id,can_view_all,can_create_groups,must_reset_password,sections!staff_section_id_fkey(id,name)&order=name.asc&active=eq.true')
   ]);
   DB.sections=secs;DB.rooms=rooms;DB.staff=staff;
   secs.forEach(s=>getSC(s.name));
@@ -2816,8 +2836,7 @@ async function doChangePwd(){
   if(np!==con){showAlert(err,'Passwords do not match.');return;}
   btn.disabled=true;btn.innerHTML='<div class="spin" style="width:15px;height:15px;border-width:2px;margin:0 auto"></div>';
   try{
-    const curHash=await hashPwd(cur);
-    const matched=U.password===curHash||U.password===cur;
+    const matched=await verifyPwd(cur,U.password);
     if(!matched){showAlert(err,'Current password is incorrect.');return;}
     const newHash=await hashPwd(np);
     await PATCH('staff','svc_no=eq.'+encodeURIComponent(U.svc_no),{password:newHash});
