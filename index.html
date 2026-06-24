@@ -1028,7 +1028,7 @@ function openNewMeetingModal(preDate,preSlot,preRoomId){
   const preD=preDate||todayStr();
   const preS=preSlot==null?CAL_START*4:preSlot; // default = admin-set start hour
   window._editMeetingId=null;window._mtype='internal';window._mprivacy='public';window._mmode='physical';window._mnoroom=false;window._mrecur='';
-  window._mparticipants=[{staff_id:U.id,name:U.name,email:U.email||'',is_external:false,rsvp:'accepted'}];
+  window._mparticipants=[{staff_id:U.id,name:staffName(U),email:U.email||'',is_external:false,rsvp:'accepted'}];
 
   showModal(`
   <div class="modal-head"><div class="modal-title">Schedule meeting</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
@@ -1279,7 +1279,7 @@ async function saveMeeting(){
     const mRows=await POST('meetings',{
       title,type,meeting_mode:mode,meeting_link,privacy:window._mprivacy||'public',date,start_slot,duration,notes,location,no_room,
       room_id:room_id||null,section_id:U.section_id||null,section_name:U.sections?U.sections.name:null,
-      created_by:U.id,created_by_name:U.name,created_by_svc:U.svc_no
+      created_by:U.id,created_by_name:staffName(U),created_by_svc:U.svc_no
     });
     const mRow=Array.isArray(mRows)?mRows[0]:mRows;
     if(window._mparticipants.length){
@@ -1297,7 +1297,7 @@ async function saveMeeting(){
           else if(recurrence_rule==='biweekly')curDate=addDays(curDate,14);
           else if(recurrence_rule==='monthly')curDate=addMonths(curDate);
           if(curDate>until)break;
-          const copyRows=await POST('meetings',{title,type,meeting_mode:mode,meeting_link,privacy:window._mprivacy||'public',date:curDate,start_slot,duration,notes,location,no_room,room_id:room_id||null,section_id:U.section_id||null,section_name:U.sections?U.sections.name:null,created_by:U.id,created_by_name:U.name,created_by_svc:U.svc_no,recurrence_id,recurrence_rule});
+          const copyRows=await POST('meetings',{title,type,meeting_mode:mode,meeting_link,privacy:window._mprivacy||'public',date:curDate,start_slot,duration,notes,location,no_room,room_id:room_id||null,section_id:U.section_id||null,section_name:U.sections?U.sections.name:null,created_by:U.id,created_by_name:staffName(U),created_by_svc:U.svc_no,recurrence_id,recurrence_rule});
           const copyRow=Array.isArray(copyRows)?copyRows[0]:copyRows;
           if(window._mparticipants.length){await Promise.all(window._mparticipants.map(p=>POST('participants',{meeting_id:copyRow.id,staff_id:p.staff_id||null,name:p.name,email:p.email||null,is_external:p.is_external,rsvp:p.rsvp})));}
           count++;
@@ -1424,7 +1424,7 @@ async function rsvp(meetingId,response){
   try{
     const parts=await GET('participants',`select=*&meeting_id=eq.${meetingId}&staff_id=eq.${U.id}`);
     if(parts.length){await PATCH('participants',`id=eq.${parts[0].id}`,{rsvp:response,rsvp_note:note});}
-    else{await POST('participants',{meeting_id:meetingId,staff_id:U.id,name:U.name,email:U.email||null,is_external:false,rsvp:response,rsvp_note:note});}
+    else{await POST('participants',{meeting_id:meetingId,staff_id:U.id,name:staffName(U),email:U.email||null,is_external:false,rsvp:response,rsvp_note:note});}
     showToast(response==='accepted'?'You accepted the invite':'You declined the invite');
     closeModal();refreshActiveViews();
   }catch(e){alert(e.message);}
@@ -1633,16 +1633,17 @@ function buildTgMsg(m,type,allParts,extra){
   const placeLine=place?`\n📍 ${place}`:'';
   const names=(allParts||[]).map(p=>p.name).filter(Boolean).join(', ');
   const attendeesLine=names?`\n👥 ${names}`:'';
-  const by=esc(m.created_by_name||'');
+  const creatorStaff=DB.staff&&DB.staff.find(s=>s.id===m.created_by);
+  const by=creatorStaff?staffName(creatorStaff):esc(m.created_by_name||'');
   const extraLine=extra?`\n\n${esc(extra)}`:'';
   if(type==='reminder')
-    return `⏰ <b>${esc(m.title)}</b>\n\n🗓 ${dateStr} · ${timeStr}${placeLine}${attendeesLine}\n\nStarts in 30 minutes.`;
+    return `⏰ <b>${esc(m.title)}</b>\n\n🗓 ${dateStr}\n⏱ ${timeStr}${placeLine}${attendeesLine}\n\nStarts in 30 minutes.`;
   if(type==='cancellation')
-    return `❌ <b>${esc(m.title)}</b>\n\n🗓 ${dateStr} · ${timeStr}${extraLine}\n\n— ${by}`;
+    return `❌ <b>${esc(m.title)}</b>\n\n🗓 ${dateStr}\n⏱ ${timeStr}${extraLine}\n\n— ${by}`;
   if(type==='update')
-    return `✏️ <b>${esc(m.title)} — Updated</b>\n\n🗓 ${dateStr} · ${timeStr}${placeLine}${attendeesLine}${extraLine}\n\n— ${by}`;
+    return `✏️ <b>${esc(m.title)} — Updated</b>\n\n🗓 ${dateStr}\n⏱ ${timeStr}${placeLine}${attendeesLine}${extraLine}\n\n— ${by}`;
   // invitation / message
-  return `📋 <b>${esc(m.title)}</b>\n\n🗓 ${dateStr} · ${timeStr}${placeLine}${attendeesLine}${extraLine}\n\nOrganised by ${by}`;
+  return `📋 <b>${esc(m.title)}</b>\n\n🗓 ${dateStr}\n⏱ ${timeStr}${placeLine}${attendeesLine}${extraLine}\n\nOrganised by ${by}`;
 }
 
 /* =================== AUTO-SCHEDULE NOTIFICATIONS =================== */
@@ -1920,7 +1921,7 @@ async function savePreBooking(){
     try{
       await POST('meetings',{title,type:'internal',meeting_mode:'physical',privacy:'public',date,start_slot:startSlot,duration,
         section_id:sectionId,section_name:section?.name||'',room_id:roomId||null,no_room:!roomId,
-        created_by:U.id,created_by_name:U.name,created_by_svc:U.svc_no,is_prebooked:true});
+        created_by:U.id,created_by_name:staffName(U),created_by_svc:U.svc_no,is_prebooked:true});
       created++;
     }catch(e){skipped++;}
   }
@@ -2289,7 +2290,7 @@ async function renderHome(){
   const today=new Date();today.setHours(0,0,0,0);const ts=todayStr();
   const h=new Date().getHours();
   const greet=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
-  const gEl=document.getElementById('home-greeting');if(gEl)gEl.textContent=greet+', '+((U&&U.name)||'');
+  const gEl=document.getElementById('home-greeting');if(gEl)gEl.textContent=greet+', '+((U&&staffName(U))||'');
   const dEl=document.getElementById('home-date');if(dEl)dEl.textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   let todayMeetings=[],pendingRsvps=0,nextMeeting=null;
   try{
