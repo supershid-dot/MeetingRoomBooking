@@ -327,14 +327,22 @@ tbody tr:hover td{background:var(--panel2)}
 .search-res{overflow-y:auto;padding:8px}
 /* HOME DASHBOARD */
 .hm-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
-@media(max-width:500px){.hm-grid{grid-template-columns:1fr}}
-.hm-stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;cursor:pointer;transition:border-color var(--ease),box-shadow var(--ease)}
+.hm-stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 20px 20px;cursor:pointer;transition:border-color var(--ease),box-shadow var(--ease);min-height:110px;display:flex;flex-direction:column;justify-content:space-between}
 .hm-stat:hover{border-color:rgba(13,148,136,.35);box-shadow:0 4px 20px rgba(0,0,0,.2)}
-.hm-val{font-size:32px;font-weight:800;color:var(--accent-ink);line-height:1.1;letter-spacing:-.02em}
-.hm-lbl{font-size:10px;color:var(--faint);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.1em}
+.hm-val{font-size:52px;font-weight:800;color:var(--accent-ink);line-height:1;letter-spacing:-.03em}
+.hm-lbl{font-size:9px;color:var(--faint);margin-top:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;line-height:1.4}
 .hm-next{background:linear-gradient(135deg,var(--accent),#0b7a70);color:#fff;border-radius:14px;padding:18px;margin-bottom:14px;border:1px solid rgba(13,148,136,.3)}
 .hm-next .hm-lbl{color:rgba(255,255,255,.7)}
 .hm-next .hm-val{color:#fff;font-size:20px;font-weight:700}
+/* STAFF PICKER */
+.staff-picker{position:relative}
+.staff-picker-drop{position:absolute;top:calc(100% + 6px);left:0;z-index:200;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);width:max(240px,min(320px,90vw));overflow:hidden}
+.staff-picker-search{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.staff-picker-search input{flex:1;background:transparent;border:none;outline:none;font-size:13px;color:var(--ink)}
+.staff-picker-list{max-height:260px;overflow-y:auto;padding:4px 0}
+.staff-picker-item{padding:10px 14px;font-size:13px;cursor:pointer;transition:background var(--ease);color:var(--ink)}
+.staff-picker-item:hover{background:var(--line2)}
+.staff-picker-item.sp-active{background:var(--accent-bg);color:var(--accent-ink);font-weight:600}
 /* MEETING NOTES */
 .notes-area{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;min-height:80px;width:100%;box-sizing:border-box;resize:vertical;color:var(--text);font-family:inherit}
 .notes-area.dv{font-family:'Faruma',sans-serif;direction:rtl;text-align:right;font-size:15px}
@@ -471,7 +479,19 @@ tbody tr:hover td{background:var(--panel2)}
           <span class="week-lbl" id="week-lbl"></span>
           <button class="btn btn-icon btn-sm" onclick="nextWeek()"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
         </div>
-        <select class="staff-sel" id="staff-sel" onchange="onStaffChange()" title="View another staff member's schedule"></select>
+        <div class="staff-picker" id="staff-picker">
+          <button class="staff-sel" id="staff-sel-btn" onclick="toggleStaffPicker()" type="button" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <span id="staff-sel-label">— My schedule —</span>
+            <i class="ti ti-chevron-down" style="font-size:11px;opacity:.6"></i>
+          </button>
+          <div class="staff-picker-drop" id="staff-picker-drop" style="display:none">
+            <div class="staff-picker-search">
+              <i class="ti ti-search" style="color:var(--faint);font-size:14px;flex-shrink:0" aria-hidden="true"></i>
+              <input type="text" id="staff-search-input" placeholder="Search staff…" oninput="filterStaffPicker()" autocomplete="off" autocorrect="off" spellcheck="false">
+            </div>
+            <div class="staff-picker-list" id="staff-picker-list"></div>
+          </div>
+        </div>
         <button class="btn btn-accent btn-sm" onclick="openNewMeetingModal()"><i class="ti ti-plus" aria-hidden="true"></i>New</button>
         <button class="btn btn-icon btn-ghost btn-sm" onclick="renderCal()" title="Refresh"><i class="ti ti-refresh" aria-hidden="true"></i></button>
       </div>
@@ -848,17 +868,59 @@ function switchTab(id){
 }
 
 /* =================== STAFF / ROOM SELECTS =================== */
+let _staffPickerData=[];
 function buildStaffSelect(){
-  const sel=document.getElementById('staff-sel');
   const others=visibleStaff().filter(s=>s.id!==U.id);
-  sel.innerHTML='<option value="">— My schedule —</option>'+others.map(s=>`<option value="${s.id}">${esc(staffName(s))} · ${esc(s.svc_no||'')}</option>`).join('');
-  sel.value=selectedStaffId&&selectedStaffId!==U.id?String(selectedStaffId):'';
+  _staffPickerData=[{id:null,label:'— My schedule —'},...others.map(s=>({id:s.id,label:esc(staffName(s))+' · '+esc(s.svc_no||'')}))];
+  _renderStaffPickerItems('');
+  _updateStaffPickerLabel();
 }
-function onStaffChange(){
-  const v=document.getElementById('staff-sel').value;
-  selectedStaffId=v?parseInt(v):U.id;selectedDayIdx=null;
+function _updateStaffPickerLabel(){
+  const cur=_staffPickerData.find(x=>selectedStaffId===U.id?x.id===null:x.id===selectedStaffId);
+  const lbl=document.getElementById('staff-sel-label');
+  if(lbl)lbl.textContent=cur?cur.label.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#x27;/g,"'"):'— My schedule —';
+}
+function _renderStaffPickerItems(q){
+  const list=document.getElementById('staff-picker-list');
+  if(!list)return;
+  const lq=q.toLowerCase();
+  const filtered=q?_staffPickerData.filter(x=>x.label.toLowerCase().includes(lq)):_staffPickerData;
+  list.innerHTML=filtered.map(x=>{
+    const active=(selectedStaffId===U.id&&x.id===null)||(x.id!==null&&x.id===selectedStaffId);
+    return`<div class="staff-picker-item${active?' sp-active':''}" onclick="selectStaff(${x.id===null?'null':x.id})">${x.label}</div>`;
+  }).join('');
+}
+function filterStaffPicker(){
+  const q=(document.getElementById('staff-search-input')||{}).value||'';
+  _renderStaffPickerItems(q);
+}
+function toggleStaffPicker(){
+  const drop=document.getElementById('staff-picker-drop');
+  if(!drop)return;
+  const isOpen=drop.style.display!=='none';
+  drop.style.display=isOpen?'none':'';
+  if(!isOpen){
+    const inp=document.getElementById('staff-search-input');
+    if(inp){inp.value='';_renderStaffPickerItems('');}
+    setTimeout(()=>{const inp=document.getElementById('staff-search-input');if(inp)inp.focus();},60);
+  }
+}
+function selectStaff(id){
+  selectedStaffId=(id===null||id==='null')?U.id:parseInt(id);
+  selectedDayIdx=null;
+  _updateStaffPickerLabel();
+  const drop=document.getElementById('staff-picker-drop');
+  if(drop)drop.style.display='none';
   renderCal();
 }
+document.addEventListener('click',function(e){
+  const picker=document.getElementById('staff-picker');
+  if(picker&&!picker.contains(e.target)){
+    const drop=document.getElementById('staff-picker-drop');
+    if(drop)drop.style.display='none';
+  }
+});
+function onStaffChange(){}  // kept for compatibility
 function getViewingUser(){return DB.staff.find(s=>s.id===selectedStaffId)||U;}
 function buildRoomSelect(){
   const sel=document.getElementById('rm-room-sel');
