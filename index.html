@@ -344,6 +344,9 @@ tbody tr:hover td{background:var(--panel2)}
 .dv-text{font-family:'Faruma',sans-serif;direction:rtl;text-align:right;unicode-bidi:embed}
 /* ROOM BLOCK indicator on grid */
 .wg-blocked{background:repeating-linear-gradient(135deg,rgba(234,179,8,.15) 0,rgba(234,179,8,.15) 5px,transparent 5px,transparent 10px)!important;cursor:not-allowed}
+/* CANCELLED meeting card */
+.mcard.mcard-cancelled{opacity:.55}
+.mcard.mcard-cancelled::before{background:var(--bad)!important}
 /* QUICK ACTIONS */
 .qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .qa-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 14px;cursor:pointer;text-align:center;transition:border-color var(--ease),box-shadow var(--ease)}
@@ -971,7 +974,7 @@ async function renderCal(){
   ey.textContent=isViewingSelf?`${(U.svc_no||'').toUpperCase()} · CALENDAR`:`VIEWING: ${staffName(viewing).toUpperCase()}`;
 
   let meetings=[];
-  try{meetings=await GET('meetings',`select=*,participants(*)&date=gte.${s}&date=lte.${e}&order=start_slot.asc`);}catch(e_){console.error(e_);}
+  try{meetings=await GET('meetings',`select=*,participants(*)&date=gte.${s}&date=lte.${e}&is_cancelled=not.is.true&order=start_slot.asc`);}catch(e_){console.error(e_);}
   const viewMeetings=meetings.filter(m=>{
     if(m.created_by===viewing.id)return true;
     return m.participants&&m.participants.some(p=>p.staff_id===viewing.id);
@@ -999,7 +1002,7 @@ async function renderRooms(){
 
   let roomMeetings=[];
   if(selectedRoomId){
-    try{roomMeetings=await GET('meetings',`select=*,participants(*)&date=gte.${s}&date=lte.${e}&room_id=eq.${selectedRoomId}&type=eq.internal&order=start_slot.asc`);}catch(e_){console.error(e_);}
+    try{roomMeetings=await GET('meetings',`select=*,participants(*)&date=gte.${s}&date=lte.${e}&room_id=eq.${selectedRoomId}&type=eq.internal&is_cancelled=not.is.true&order=start_slot.asc`);}catch(e_){console.error(e_);}
   }
   const today=new Date();today.setHours(0,0,0,0);
   const dates=Array.from({length:7},(_,i)=>{const d=new Date(ws);d.setDate(d.getDate()+i);return d;});
@@ -1041,7 +1044,7 @@ async function computeMaxDuration(date,room_id,start_slot,excludeId){
   const dayEnd=CAL_END*4;
   if(!room_id||!date)return dayEnd-start_slot;
   let ms=[];
-  try{ms=await GET('meetings',`select=id,start_slot,duration&date=eq.${date}&room_id=eq.${room_id}&type=eq.internal`);}catch(e){return dayEnd-start_slot;}
+  try{ms=await GET('meetings',`select=id,start_slot,duration&date=eq.${date}&room_id=eq.${room_id}&type=eq.internal&is_cancelled=not.is.true`);}catch(e){return dayEnd-start_slot;}
   ms=ms.filter(m=>m.id!==excludeId);
   let limit=dayEnd;
   for(const m of ms){
@@ -1268,7 +1271,7 @@ async function checkParticipantBusy(p){
 }
 async function isStaffBusy(staffId,date,start,dur,excludeId){
   let ms=[];
-  try{ms=await GET('meetings',`select=id,start_slot,duration,created_by,participants(staff_id,rsvp)&date=eq.${date}`);}catch(e){return false;}
+  try{ms=await GET('meetings',`select=id,start_slot,duration,created_by,participants(staff_id,rsvp)&date=eq.${date}&is_cancelled=not.is.true`);}catch(e){return false;}
   return ms.some(m=>{
     if(m.id===excludeId)return false;
     if(!slotsOverlap(start,dur,m.start_slot,m.duration))return false;
@@ -1348,7 +1351,7 @@ async function saveMeeting(){
   const{mode,location,room_id,no_room,meeting_link}=collectPlace();
   // Room conflict pre-booking check (Issue 5)
   if(type==='internal'&&room_id&&mode!=='online'){
-    const existing=await GET('meetings',`select=id,start_slot,duration&date=eq.${date}&room_id=eq.${room_id}&type=eq.internal`);
+    const existing=await GET('meetings',`select=id,start_slot,duration&date=eq.${date}&room_id=eq.${room_id}&type=eq.internal&is_cancelled=not.is.true`);
     const conflict=existing.filter(m=>slotsOverlap(start_slot,duration,m.start_slot,m.duration));
     if(conflict.length){showAlert(err,'This room is already booked for that time. Choose a different room or time.');return;}
   }
@@ -1395,7 +1398,8 @@ function viewMeetingModal(m){
   const today=new Date();today.setHours(0,0,0,0);
   const mDate=new Date(m.date+'T00:00:00');
   const isPast=mDate<today;const isToday=mDate.getTime()===today.getTime();
-  const canEditNow=isPast?(U.role==='admin'):manage;
+  const isCancelled=!!m.is_cancelled;
+  const canEditNow=!isCancelled&&(isPast?(U.role==='admin'):manage);
   const canMarkAttendance=manage;
   const c=meetingColor(m);
   const ps=m.participants||[];
@@ -1416,7 +1420,8 @@ function viewMeetingModal(m){
     <button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button>
   </div>
   <div class="modal-body">
-    ${m.is_prebooked?`<div class="alert a-warn" style="margin-bottom:14px"><i class="ti ti-calendar-clock" aria-hidden="true"></i> <strong>Pre-booked slot</strong> — details are pending.${canEditNow?` Click <strong>Complete Details</strong> below to fill in the meeting information.`:' Contact your admin to complete this booking.'}</div>`:''}
+    ${isCancelled?`<div class="alert a-bad" style="margin-bottom:14px"><i class="ti ti-ban" aria-hidden="true"></i> <strong>Meeting cancelled</strong>${m.cancelled_at?' on '+new Date(m.cancelled_at).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'}):''}${m.cancelled_reason?' — '+esc(m.cancelled_reason):''}. The room and time slot have been freed.</div>`:''}
+    ${!isCancelled&&m.is_prebooked?`<div class="alert a-warn" style="margin-bottom:14px"><i class="ti ti-calendar-clock" aria-hidden="true"></i> <strong>Pre-booked slot</strong> — details are pending.${canEditNow?` Click <strong>Complete Details</strong> below to fill in the meeting information.`:' Contact your admin to complete this booking.'}</div>`:''}
     <div class="vm-grid">
       <div class="vm-left">
         <div class="r2" style="margin-bottom:12px">
@@ -1689,7 +1694,7 @@ async function updateMeeting(meetingId){
   const type=window._mtype;
   const{mode,location,room_id,no_room,meeting_link}=collectPlace();
   if(type==='internal'&&room_id&&mode!=='online'){
-    const existing=await GET('meetings',`select=id,start_slot,duration&date=eq.${date}&room_id=eq.${room_id}&type=eq.internal`);
+    const existing=await GET('meetings',`select=id,start_slot,duration&date=eq.${date}&room_id=eq.${room_id}&type=eq.internal&is_cancelled=not.is.true`);
     const conflict=existing.filter(m=>m.id!==meetingId&&slotsOverlap(start_slot,duration,m.start_slot,m.duration));
     if(conflict.length){showAlert(err,'This room is already booked for that time.');return;}
   }
@@ -1712,19 +1717,20 @@ async function updateMeeting(meetingId){
 async function openCancelModal(meetingId){
   const rows=await GET('meetings',`select=*,participants(*)&id=eq.${meetingId}`);
   if(!rows.length)return;const m=rows[0];
+  if(m.is_cancelled){showToast('Already cancelled.');return;}
   if(!(new Date(m.date+'T00:00:00')<new Date(new Date().setHours(0,0,0,0))?U.role==='admin':canManage(m))){showToast('Not allowed.');return;}
   showModal(`
   <div class="modal-head"><div class="modal-title">Cancel meeting</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
   <div class="modal-body"><div class="stack">
-    <div class="alert a-bad"><i class="ti ti-alert-triangle" aria-hidden="true"></i>This will permanently delete "<strong>${esc(m.title)}</strong>". This cannot be undone.</div>
+    <div class="alert a-warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span>The meeting "<strong>${esc(m.title)}</strong>" will be marked as <strong>cancelled</strong> and kept on record. The room and time slot will be freed immediately.</span></div>
     <label class="toggle-row"><input type="checkbox" id="cx-notify" checked/><span>Notify attendees of the cancellation</span></label>
     ${m.recurrence_id?'<label class="toggle-row"><input type="checkbox" id="cx-series"/><span>Cancel all meetings in this series</span></label>':''}
-    <div class="field"><label>Reason (optional)</label><textarea id="cx-reason" placeholder="e.g. Cancelled — will reschedule next week"></textarea></div>
+    <div class="field"><label>Reason (optional)</label><textarea id="cx-reason" placeholder="e.g. Rescheduled to next week"></textarea></div>
     <div id="cx-err" class="alert a-bad hidden"></div>
   </div></div>
   <div class="modal-foot">
     <button class="btn" onclick="closeModal()">Keep meeting</button>
-    <button class="btn btn-danger" id="cx-btn" onclick="confirmCancel(${meetingId},'${m.recurrence_id||''}')"><i class="ti ti-trash" aria-hidden="true"></i>Cancel meeting</button>
+    <button class="btn btn-danger" id="cx-btn" onclick="confirmCancel(${meetingId},'${m.recurrence_id||''}')"><i class="ti ti-ban" aria-hidden="true"></i>Cancel meeting</button>
   </div>`);
 }
 async function confirmCancel(meetingId,recurrenceId){
@@ -1735,8 +1741,13 @@ async function confirmCancel(meetingId,recurrenceId){
   const btn=document.getElementById('cx-btn');btn.disabled=true;btn.textContent='Cancelling…';
   try{
     if(notify){await sendMeetingComm(meetingId,'cancellation',reason,true,true);}
-    if(cancelSeries){await DEL('meetings','recurrence_id=eq.'+recurrenceId);}
-    else{await DEL('meetings',`id=eq.${meetingId}`);}
+    const cancelData={is_cancelled:true,cancelled_at:new Date().toISOString(),cancelled_reason:reason||null};
+    if(cancelSeries){
+      const series=await GET('meetings',`select=id&recurrence_id=eq.${recurrenceId}`);
+      await Promise.all(series.map(r=>PATCH('meetings',`id=eq.${r.id}`,cancelData)));
+    }else{
+      await PATCH('meetings',`id=eq.${meetingId}`,cancelData);
+    }
     closeModal();showToast(cancelSeries?'Series cancelled':'Meeting cancelled');refreshActiveViews();
   }catch(e){showAlert(document.getElementById('cx-err'),'Error: '+e.message);btn.disabled=false;btn.textContent='Cancel meeting';}
 }
@@ -2099,11 +2110,11 @@ function _mcard(m){
   const myP=(m.participants||[]).find(p=>p.staff_id===U.id);
   const rsvpDot=myP?`<span class="rsvp-dot rsvp-${myP.rsvp}" style="display:inline-block"></span>`:'';
   const _isPast=new Date(m.date+'T00:00:00')<(()=>{const t=new Date();t.setHours(0,0,0,0);return t;})();
-  const _preB=m.is_prebooked;
-  return`<div class="mcard${_isPast?' mcard-past':''}${_preB?' mcard-prebooked':''}${m.type==='external'?' mcard-ext':''}" onclick="viewMeetingAndLoad(${m.id})">
+  const _preB=m.is_prebooked;const _cancelled=m.is_cancelled;
+  return`<div class="mcard${_isPast?' mcard-past':''}${_cancelled?' mcard-cancelled':''}${_preB?' mcard-prebooked':''}${m.type==='external'?' mcard-ext':''}" onclick="viewMeetingAndLoad(${m.id})">
     <div class="mcard-body">
       <div class="mcard-header">
-        <div class="mcard-title">${canSee?esc(m.title):'Private meeting'}${_preB?'<span style="margin-left:6px;font-size:10px;font-weight:700;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 5px;vertical-align:middle">DRAFT</span>':''}${m.recurrence_id?'<span style="margin-left:5px;font-size:11px;color:var(--accent)" title="Recurring meeting">&#8635;</span>':''}</div>
+        <div class="mcard-title">${canSee?esc(m.title):'Private meeting'}${_cancelled?'<span class="badge b-bad" style="margin-left:7px;vertical-align:middle;font-size:10px">CANCELLED</span>':''}${_preB?'<span style="margin-left:6px;font-size:10px;font-weight:700;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 5px;vertical-align:middle">DRAFT</span>':''}${m.recurrence_id?'<span style="margin-left:5px;font-size:11px;color:var(--accent)" title="Recurring meeting">&#8635;</span>':''}</div>
         <span class="tag ${m.type==='external'?'tag-ext':'tag-int'}">${m.type==='internal'?'Internal':'External'}</span>
       </div>
       <div class="mcard-meta">
@@ -2141,9 +2152,9 @@ function filterMeetings(filter,btn){
   // all / internal / external — split by the Upcoming/Past toggle
   const isUpcoming=m=>new Date(m.date+'T00:00:00')>=today;
   if(meetingTimeSeg==='upcoming'){
-    list=list.filter(isUpcoming).sort(_sortAsc);
+    list=list.filter(m=>isUpcoming(m)&&!m.is_cancelled).sort(_sortAsc);
   }else{
-    list=list.filter(m=>!isUpcoming(m)).sort(_sortDesc);
+    list=list.filter(m=>!isUpcoming(m)||m.is_cancelled).sort(_sortDesc);
   }
   if(!list.length){container.innerHTML=`<div class="alert a-info"><i class="ti ti-calendar-off" aria-hidden="true"></i>No ${meetingTimeSeg} meetings found.</div>`;return;}
   container.innerHTML=list.map(_mcard).join('');
@@ -2495,7 +2506,7 @@ async function renderHome(){
   const dEl=document.getElementById('home-date');if(dEl)dEl.textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   let todayMeetings=[],pendingRsvps=0,nextMeeting=null;
   try{
-    const allToday=await GET('meetings','select=*,participants(*)&date=eq.'+ts+'&order=start_slot.asc');
+    const allToday=await GET('meetings','select=*,participants(*)&date=eq.'+ts+'&is_cancelled=not.is.true&order=start_slot.asc');
     todayMeetings=allToday.filter(m=>canSeeMeetingDetails(m)||(m.participants||[]).some(p=>p.staff_id===U.id));
     const nowSlot=Math.floor((new Date().getHours()*60+new Date().getMinutes())/15);
     const upcoming=todayMeetings.filter(m=>m.start_slot>nowSlot);

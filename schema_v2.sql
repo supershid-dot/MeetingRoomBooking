@@ -164,6 +164,13 @@ CREATE INDEX IF NOT EXISTS grp_members_staff_idx       ON meeting_group_members(
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS recurrence_id   text;
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS recurrence_rule text;
 
+-- ─────────────────────────── CANCELLATION ────────────────────────
+-- Meetings are never deleted; cancelling sets is_cancelled = true.
+-- Cancelled meetings are excluded from calendar/room slot queries.
+ALTER TABLE meetings ADD COLUMN IF NOT EXISTS is_cancelled      boolean DEFAULT false;
+ALTER TABLE meetings ADD COLUMN IF NOT EXISTS cancelled_at      timestamptz;
+ALTER TABLE meetings ADD COLUMN IF NOT EXISTS cancelled_reason  text;
+
 -- ─────────────────────────── MEETING NOTES ────────────────────────
 ALTER TABLE meetings     ADD COLUMN IF NOT EXISTS minutes              text;
 ALTER TABLE meetings     ADD COLUMN IF NOT EXISTS minutes_updated_at   timestamptz;
