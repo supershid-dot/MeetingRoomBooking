@@ -1400,7 +1400,9 @@ function viewMeetingModal(m){
   const mDate=new Date(m.date+'T00:00:00');
   const isPast=mDate<today;const isToday=mDate.getTime()===today.getTime();
   const isCancelled=!!m.is_cancelled;
-  const canEditNow=!isCancelled&&(isPast?(U.role==='admin'):manage);
+  const minutesFinalized=!!m.minutes_finalized;
+  const canEditNow=isCancelled?(U.role==='admin'):(isPast?(U.role==='admin'):manage);
+  const canEditNotes=minutesFinalized?(U.role==='admin'):manage;
   const canMarkAttendance=manage;
   const c=meetingColor(m);
   const ps=m.participants||[];
@@ -1483,14 +1485,18 @@ function viewMeetingModal(m){
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div class="section-title" style="margin:0">Meeting minutes <span style="font-size:10px;color:var(--faint);text-transform:none;font-weight:400">— shared with participants</span></div>
-          ${manage?`<button class="btn btn-sm btn-ghost" id="minutes-edit-btn" onclick="toggleMinutesEdit(${m.id})"><i class="ti ti-${m.minutes?'edit':'plus'}" aria-hidden="true"></i> ${m.minutes?'Edit':'Add'}</button>`:''}
+          <div style="display:flex;gap:6px;align-items:center">
+            ${minutesFinalized?`<span class="badge b-good" style="font-size:10px;padding:3px 8px"><i class="ti ti-lock" aria-hidden="true"></i> Finalized</span>`:''}
+            ${!minutesFinalized&&m.minutes&&manage?`<button class="btn btn-sm btn-ghost" onclick="finalizeMinutes(${m.id})" title="Lock minutes — only admin can edit after this"><i class="ti ti-lock" aria-hidden="true"></i> Finalize</button>`:''}
+            ${canEditNotes?`<button class="btn btn-sm btn-ghost" id="minutes-edit-btn" onclick="toggleMinutesEdit(${m.id})"><i class="ti ti-${m.minutes?'edit':'plus'}" aria-hidden="true"></i> ${m.minutes?'Edit':'Add'}</button>`:''}
+          </div>
         </div>
         <div id="minutes-view">
           ${m.minutes
             ?`<div class="${isDV(m.minutes)?'dv-text':''}" style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:${isDV(m.minutes)?'15':'13'}px;white-space:pre-wrap;line-height:1.6;max-height:180px;overflow-y:auto">${esc(m.minutes)}</div>${m.minutes_updated_at?`<div style="font-size:10px;color:var(--faint);margin-top:4px">Last updated ${new Date(m.minutes_updated_at).toLocaleString()}</div>`:''}`
             :`<div style="color:var(--faint);font-size:13px;padding:8px 0">No minutes recorded yet.</div>`}
         </div>
-        ${manage?`<div id="minutes-edit" style="display:none">
+        ${canEditNotes?`<div id="minutes-edit" style="display:none">
           <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
             <div class="lang-toggle">
               <button id="min-en" class="${isDV(m.minutes||'')?'':'active'}" onclick="setNoteLang('minutes-area','en',this)">EN</button>
@@ -1546,7 +1552,7 @@ function viewMeetingModal(m){
     <button class="btn" onclick="closeModal()">Close</button>
     <button class="btn btn-sm btn-ghost" onclick="downloadICS(window._viewingMeeting)" title="Add to calendar">&#128197; Add to calendar</button>
     ${canEditNow?`<button class="btn ${m.is_prebooked?'btn-accent':'btn-warn'}" onclick="openEditMeetingModal(${m.id})"><i class="ti ti-${m.is_prebooked?'calendar-check':'edit'}" aria-hidden="true"></i>${m.is_prebooked?'Complete Details':'Edit'}</button>
-    <button class="btn btn-danger" onclick="openCancelModal(${m.id})"><i class="ti ti-trash" aria-hidden="true"></i>Cancel</button>`:''}
+    ${!isCancelled?`<button class="btn btn-danger" onclick="openCancelModal(${m.id})"><i class="ti ti-trash" aria-hidden="true"></i>Cancel</button>`:''}`:''}
   </div>`);
 }
 
@@ -1599,6 +1605,7 @@ async function openEditMeetingModal(meetingId){
 function editMeetingModal(m){
   const today=new Date();today.setHours(0,0,0,0);
   const isPast=new Date(m.date+'T00:00:00')<today;
+  if(m.is_cancelled&&U.role!=='admin'){showToast('Only admin can edit cancelled meetings.');closeModal();return;}
   if(isPast&&U.role!=='admin'){showToast('Only admin can edit past meetings.');closeModal();return;}
   if(!canManage(m)){showToast('Only the organising section can edit this meeting.');closeModal();return;}
   const roomOpts=DB.rooms.map(r=>`<option value="${r.id}"${r.id===m.room_id?' selected':''}>${esc(r.name)}</option>`).join('');
@@ -2614,9 +2621,20 @@ async function savePersonalNotes(partId){
 }
 async function saveMinutes(meetingId){
   const val=(document.getElementById('minutes-area')||{}).value||'';
+  const chk=await GET('meetings','select=minutes_finalized&id=eq.'+meetingId);
+  if(chk[0]&&chk[0].minutes_finalized&&U.role!=='admin'){showToast('Minutes are finalized. Only admin can edit.');return;}
   try{
     await PATCH('meetings','id=eq.'+meetingId,{minutes:val,minutes_updated_at:new Date().toISOString(),minutes_updated_by:U.id});
     showToast('Minutes saved');
+    const rows=await GET('meetings','select=*,participants(*)&id=eq.'+meetingId);
+    if(rows[0])viewMeetingModal(rows[0]);
+  }catch(e){alert(e.message);}
+}
+async function finalizeMinutes(meetingId){
+  if(!confirm('Finalize minutes? After this, only admin can edit them.'))return;
+  try{
+    await PATCH('meetings','id=eq.'+meetingId,{minutes_finalized:true});
+    showToast('Minutes finalized');
     const rows=await GET('meetings','select=*,participants(*)&id=eq.'+meetingId);
     if(rows[0])viewMeetingModal(rows[0]);
   }catch(e){alert(e.message);}

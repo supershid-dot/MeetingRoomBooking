@@ -175,6 +175,7 @@ ALTER TABLE meetings ADD COLUMN IF NOT EXISTS cancelled_reason  text;
 ALTER TABLE meetings     ADD COLUMN IF NOT EXISTS minutes              text;
 ALTER TABLE meetings     ADD COLUMN IF NOT EXISTS minutes_updated_at   timestamptz;
 ALTER TABLE meetings     ADD COLUMN IF NOT EXISTS minutes_updated_by   integer REFERENCES staff(id);
+ALTER TABLE meetings     ADD COLUMN IF NOT EXISTS minutes_finalized    boolean DEFAULT false;
 ALTER TABLE participants ADD COLUMN IF NOT EXISTS personal_notes       text;
 
 -- ─────────────────────────── ROOM BLOCKS ──────────────────────────
