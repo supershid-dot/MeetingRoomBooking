@@ -1426,15 +1426,52 @@ function viewMeetingModal(m){
         (myRsvp?`<div class="hr"></div><div class="alert ${myRsvp.rsvp==='accepted'?'a-good':'a-bad'}"><i class="ti ti-${myRsvp.rsvp==='accepted'?'check':'x'}" aria-hidden="true"></i>You responded: <strong>${myRsvp.rsvp}</strong>${myRsvp.rsvp_note?' — '+esc(myRsvp.rsvp_note):''} <button class="btn btn-sm btn-ghost" onclick="rsvpChange(${m.id})" style="margin-left:8px;padding:3px 8px;font-size:11px">Change</button></div>`:'')}
       </div>
       <div class="vm-right">
-        <div class="section-title">My notes</div>
-        <div class="field">
-          <label style="font-size:11px;color:var(--faint)">Private — only you can see this</label>
-          <textarea id="my-notes-area" class="notes-area" placeholder="Your personal notes for this meeting…">${esc(myRsvp&&myRsvp.personal_notes?myRsvp.personal_notes:'')}</textarea>
-          <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn btn-sm" onclick="savePersonalNotes(${myRsvp?myRsvp.id:'null'})">Save my notes</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div class="section-title" style="margin:0">My notes</div>
+          <span style="font-size:10px;color:var(--faint)">Private — only you can see</span>
         </div>
-        ${m.minutes?`<div class="hr vm-mob-hr"></div><div class="field" style="margin-top:14px"><label>Meeting minutes <span style="font-size:10px;color:var(--faint)">(shared with all participants)</span></label><div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;white-space:pre-wrap">${esc(m.minutes)}</div>${m.minutes_updated_at?`<div style="font-size:10px;color:var(--faint);margin-top:4px">Last updated ${new Date(m.minutes_updated_at).toLocaleString()}</div>`:''}</div>`:''}
-        ${manage?`<div class="field" style="margin-top:14px"><label>${m.minutes?'Edit':'Add'} meeting minutes <span style="font-size:10px;color:var(--faint)">(visible to all participants)</span></label><textarea id="minutes-area" class="notes-area" placeholder="Type shared meeting notes/minutes here…">${esc(m.minutes||'')}</textarea><div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn btn-sm btn-accent" onclick="saveMinutes(${m.id})">Save minutes</button></div></div>`:''}
-        ${(canSee&&canEditNow)?`<div class="hr" style="margin-top:16px"></div><div class="section-title">Notify participants</div>
+        <textarea id="my-notes-area" class="notes-area" placeholder="Your private notes for this meeting…" style="min-height:80px">${esc(myRsvp&&myRsvp.personal_notes?myRsvp.personal_notes:'')}</textarea>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:4px">
+          <span id="notes-saved-msg" style="font-size:11px;color:var(--faint)"></span>
+          <button class="btn btn-sm" onclick="savePersonalNotes(${myRsvp?myRsvp.id:'null'})">Save</button>
+        </div>
+
+        <div class="hr" style="margin:14px 0"></div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="section-title" style="margin:0">Meeting minutes <span style="font-size:10px;color:var(--faint);text-transform:none;font-weight:400">— shared with participants</span></div>
+          ${manage?`<button class="btn btn-sm btn-ghost" id="minutes-edit-btn" onclick="toggleMinutesEdit(${m.id})"><i class="ti ti-${m.minutes?'edit':'plus'}" aria-hidden="true"></i> ${m.minutes?'Edit':'Add'}</button>`:''}
+        </div>
+        <div id="minutes-view">
+          ${m.minutes
+            ?`<div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;line-height:1.6;max-height:180px;overflow-y:auto">${esc(m.minutes)}</div>${m.minutes_updated_at?`<div style="font-size:10px;color:var(--faint);margin-top:4px">Last updated ${new Date(m.minutes_updated_at).toLocaleString()}</div>`:''}`
+            :`<div style="color:var(--faint);font-size:13px;padding:8px 0">No minutes recorded yet.</div>`}
+        </div>
+        ${manage?`<div id="minutes-edit" style="display:none">
+          <textarea id="minutes-area" class="notes-area" placeholder="Type meeting minutes here…" style="min-height:120px">${esc(m.minutes||'')}</textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+            <button class="btn btn-sm" onclick="cancelMinutesEdit()">Cancel</button>
+            <button class="btn btn-sm btn-accent" onclick="saveMinutes(${m.id})"><i class="ti ti-device-floppy" aria-hidden="true"></i> Save minutes</button>
+          </div>
+        </div>`:''}
+
+        <div class="hr" style="margin:14px 0"></div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="section-title" style="margin:0">Documents</div>
+          ${manage?`<button class="btn btn-sm btn-ghost" onclick="toggleAddDoc()"><i class="ti ti-paperclip" aria-hidden="true"></i> Attach</button>`:''}
+        </div>
+        ${renderDocList(m,manage)}
+        ${manage?`<div id="add-doc-form" style="display:none;margin-top:10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px">
+          <div class="field" style="margin-bottom:8px"><label>Name</label><input id="doc-name" placeholder="e.g. Q3 Report, Agenda"/></div>
+          <div class="field" style="margin-bottom:8px"><label>Link</label><input id="doc-url" placeholder="https://drive.google.com/…"/></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-sm" onclick="toggleAddDoc()">Cancel</button>
+            <button class="btn btn-sm btn-accent" onclick="saveAttachment(${m.id})"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+          </div>
+        </div>`:''}
+
+        ${(canSee&&canEditNow)?`<div class="hr" style="margin:14px 0"></div><div class="section-title">Notify participants</div>
         <div class="pill-group" style="margin-bottom:12px">
           <button class="pill active" onclick="switchNotifyTab('schedule',this)"><i class="ti ti-calendar-share" aria-hidden="true"></i> Schedule</button>
           <button class="pill" onclick="switchNotifyTab('reminder',this)"><i class="ti ti-bell-ringing" aria-hidden="true"></i> Reminder</button>
@@ -2473,7 +2510,11 @@ async function delRoomBlock(id){
 async function savePersonalNotes(partId){
   if(!partId||partId==='null'){showToast('You must be a participant to add notes');return;}
   const val=(document.getElementById('my-notes-area')||{}).value||'';
-  try{await PATCH('participants','id=eq.'+partId,{personal_notes:val});showToast('Notes saved');}catch(e){alert(e.message);}
+  try{
+    await PATCH('participants','id=eq.'+partId,{personal_notes:val});
+    const msg=document.getElementById('notes-saved-msg');
+    if(msg){msg.textContent='Saved ✓';setTimeout(()=>{msg.textContent='';},2000);}
+  }catch(e){alert(e.message);}
 }
 async function saveMinutes(meetingId){
   const val=(document.getElementById('minutes-area')||{}).value||'';
@@ -2482,6 +2523,63 @@ async function saveMinutes(meetingId){
     showToast('Minutes saved');
     const rows=await GET('meetings','select=*,participants(*)&id=eq.'+meetingId);
     if(rows[0])viewMeetingModal(rows[0]);
+  }catch(e){alert(e.message);}
+}
+function toggleMinutesEdit(){
+  const view=document.getElementById('minutes-view');
+  const edit=document.getElementById('minutes-edit');
+  const btn=document.getElementById('minutes-edit-btn');
+  if(!edit)return;
+  const opening=edit.style.display==='none';
+  if(view)view.style.display=opening?'none':'';
+  edit.style.display=opening?'':'none';
+  if(btn)btn.innerHTML=opening?'<i class="ti ti-x" aria-hidden="true"></i> Cancel':'<i class="ti ti-edit" aria-hidden="true"></i> Edit';
+}
+function cancelMinutesEdit(){
+  const view=document.getElementById('minutes-view');
+  const edit=document.getElementById('minutes-edit');
+  const btn=document.getElementById('minutes-edit-btn');
+  if(view)view.style.display='';
+  if(edit)edit.style.display='none';
+  if(btn)btn.innerHTML='<i class="ti ti-edit" aria-hidden="true"></i> Edit';
+}
+function toggleAddDoc(){
+  const f=document.getElementById('add-doc-form');
+  if(f){f.style.display=f.style.display==='none'?'':'none';}
+}
+function renderDocList(m,canManage){
+  let docs=[];try{docs=JSON.parse(m.attachments||'[]');}catch(e){}
+  if(!docs.length)return`<div style="color:var(--faint);font-size:13px;padding:4px 0">No documents attached.</div>`;
+  return`<div style="display:flex;flex-direction:column;gap:2px">`+docs.map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;background:var(--bg);border:1px solid var(--line)">
+      <i class="ti ti-file-description" style="color:var(--accent);flex-shrink:0" aria-hidden="true"></i>
+      <a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer" style="flex:1;color:var(--accent);font-size:13px;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.url)}">${esc(d.name)}</a>
+      ${canManage?`<button class="btn btn-danger btn-icon btn-sm" onclick="removeAttachment(${m.id},${i})" title="Remove"><i class="ti ti-trash" aria-hidden="true"></i></button>`:''}
+    </div>`).join('')+`</div>`;
+}
+async function saveAttachment(meetingId){
+  const name=(document.getElementById('doc-name')||{}).value||'';
+  const url=(document.getElementById('doc-url')||{}).value||'';
+  if(!name.trim()||!url.trim()){alert('Enter both a name and a link.');return;}
+  try{
+    const rows=await GET('meetings','select=attachments&id=eq.'+meetingId);
+    let docs=[];try{docs=JSON.parse((rows[0]&&rows[0].attachments)||'[]');}catch(e){}
+    docs.push({name:name.trim(),url:url.trim()});
+    await PATCH('meetings','id=eq.'+meetingId,{attachments:JSON.stringify(docs)});
+    showToast('Document attached');
+    const mrows=await GET('meetings','select=*,participants(*)&id=eq.'+meetingId);
+    if(mrows[0])viewMeetingModal(mrows[0]);
+  }catch(e){alert(e.message);}
+}
+async function removeAttachment(meetingId,idx){
+  if(!confirm('Remove this document?'))return;
+  try{
+    const rows=await GET('meetings','select=attachments&id=eq.'+meetingId);
+    let docs=[];try{docs=JSON.parse((rows[0]&&rows[0].attachments)||'[]');}catch(e){}
+    docs.splice(idx,1);
+    await PATCH('meetings','id=eq.'+meetingId,{attachments:JSON.stringify(docs)});
+    const mrows=await GET('meetings','select=*,participants(*)&id=eq.'+meetingId);
+    if(mrows[0])viewMeetingModal(mrows[0]);
   }catch(e){alert(e.message);}
 }
 
