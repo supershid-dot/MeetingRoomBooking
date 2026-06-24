@@ -1228,9 +1228,10 @@ function renderParticipantList(){
   refreshStaffDropdown();
   c.innerHTML=window._mparticipants.map((p,i)=>{
     const isSelf=p.staff_id===U.id;
+    const _ps=p.staff_id?DB.staff.find(x=>x.id===p.staff_id):null;const _pn=_ps?staffName(_ps):p.name;
     return`<div class="prow">
-      <div class="prow-avatar" style="background:${p.is_external?'var(--ext-bg)':'var(--accent-bg)'};color:${p.is_external?'var(--ext-ink)':'var(--accent-ink)'}">${initials(p.name)}</div>
-      <div style="flex:1;min-width:0"><div class="prow-name">${esc(p.name)}</div><div class="prow-role">${p.is_external?'External guest':(p.onLeave?'<span style="color:var(--warn-ink)">🏖 On '+esc(p.onLeave.leave_type)+'</span>':(p.busy?'<span style="color:var(--warn-ink)">⚠ Busy at this time</span>':''))}</div></div>
+      <div class="prow-avatar" style="background:${p.is_external?'var(--ext-bg)':'var(--accent-bg)'};color:${p.is_external?'var(--ext-ink)':'var(--accent-ink)'}">${initials(_pn)}</div>
+      <div style="flex:1;min-width:0"><div class="prow-name">${esc(_pn)}</div><div class="prow-role">${p.is_external?'External guest':(p.onLeave?'<span style="color:var(--warn-ink)">🏖 On '+esc(p.onLeave.leave_type)+'</span>':(p.busy?'<span style="color:var(--warn-ink)">⚠ Busy at this time</span>':''))}</div></div>
       ${p.rsvp==='accepted'&&isSelf?'<span class="badge b-good">You</span>':''}
       ${!isSelf?`<button class="prow-rm" onclick="removeParticipant(${i})"><i class="ti ti-x" aria-hidden="true"></i></button>`:''}
     </div>`;
@@ -1354,9 +1355,10 @@ function viewMeetingModal(m){
     ${ps.map(p=>{
       const att=p.attendance;
       const lv=!p.is_external&&p.staff_id?staffOnLeave(p.staff_id,m.date):null;
+      const _vs=p.staff_id?DB.staff.find(x=>x.id===p.staff_id):null;const _vn=_vs?staffName(_vs):p.name;
       return`<div class="prow">
-      <div class="prow-avatar" style="background:${p.is_external?'var(--ext-bg)':'var(--accent-bg)'};color:${p.is_external?'var(--ext-ink)':'var(--accent-ink)'}">${initials(p.name)}</div>
-      <div style="flex:1;min-width:0"><div class="prow-name">${esc(p.name)}</div><div class="prow-role"><span class="rsvp-dot rsvp-${p.rsvp}" style="display:inline-block;margin-right:4px"></span>${p.rsvp}${p.rsvp_note?' · '+esc(p.rsvp_note):''}${lv?' · <span style="color:var(--warn-ink)">🏖 '+esc(lv.leave_type)+'</span>':''}</div></div>
+      <div class="prow-avatar" style="background:${p.is_external?'var(--ext-bg)':'var(--accent-bg)'};color:${p.is_external?'var(--ext-ink)':'var(--accent-ink)'}">${initials(_vn)}</div>
+      <div style="flex:1;min-width:0"><div class="prow-name">${esc(_vn)}</div><div class="prow-role"><span class="rsvp-dot rsvp-${p.rsvp}" style="display:inline-block;margin-right:4px"></span>${p.rsvp}${p.rsvp_note?' · '+esc(p.rsvp_note):''}${lv?' · <span style="color:var(--warn-ink)">🏖 '+esc(lv.leave_type)+'</span>':''}</div></div>
       ${canMarkAttendance?`<div class="att-seg">
         <button class="att-btn ${att==='present'?'on-present':''}" title="Present" onclick="markAttendance(${p.id},'present',${m.id})">P</button>
         <button class="att-btn ${att==='late'?'on-late':''}" title="Late" onclick="markAttendance(${p.id},'late',${m.id})">L</button>
