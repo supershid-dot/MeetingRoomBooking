@@ -1,4 +1,4 @@
--- Meeting Scheduler — schema_v2.sql
+-- MeetFlow — schema_v2.sql
 -- Run this in your Supabase SQL Editor BEFORE using the app.
 -- Safe to re-run; uses IF NOT EXISTS / ON CONFLICT DO NOTHING.
 
