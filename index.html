@@ -868,7 +868,7 @@ function enterApp(){
   document.getElementById('who-name').textContent=staffName(U);
   document.getElementById('who-role').textContent=(U.svc_no||'').toLowerCase();
   showPage('app');
-  loadAll().then(()=>{buildNav();switchTab('home');startNotifLoop();});
+  loadAll().then(()=>{const fresh=DB.staff.find(s=>s.id===U.id);if(fresh){U=Object.assign({},U,fresh);}buildNav();switchTab('home');startNotifLoop();});
 }
 
 /* =================== DATA =================== */
