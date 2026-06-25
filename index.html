@@ -1551,6 +1551,8 @@ function viewMeetingModal(m){
   const ps=m.participants||[];
   const myRsvp=ps.find(p=>p.staff_id===U.id);
   const mode=m.meeting_mode||'physical';
+  const isParticipant=ps.some(p=>p.staff_id===U.id);
+  const canSeeMinutes=U.role==='admin'||m.created_by===U.id||isParticipant;
 
   showBigModal(`
   <div style="height:4px;background:${c.tx}"></div>
@@ -1629,15 +1631,16 @@ function viewMeetingModal(m){
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div class="section-title" style="margin:0">Meeting minutes <span style="font-size:10px;color:var(--faint);text-transform:none;font-weight:400">— shared with participants</span></div>
           <div style="display:flex;gap:6px;align-items:center">
-            ${minutesFinalized?`<span class="badge b-good" style="font-size:10px;padding:3px 8px"><i class="ti ti-lock" aria-hidden="true"></i> Finalized</span>`:''}
-            ${!minutesFinalized&&m.minutes&&manage?`<button class="btn btn-sm btn-ghost" onclick="finalizeMinutes(${m.id})" title="Lock minutes — only admin can edit after this"><i class="ti ti-lock" aria-hidden="true"></i> Finalize</button>`:''}
-            ${canEditNotes?`<button class="btn btn-sm btn-ghost" id="minutes-edit-btn" onclick="toggleMinutesEdit(${m.id})"><i class="ti ti-${m.minutes?'edit':'plus'}" aria-hidden="true"></i> ${m.minutes?'Edit':'Add'}</button>`:''}
+            ${canSeeMinutes&&minutesFinalized?`<span class="badge b-good" style="font-size:10px;padding:3px 8px"><i class="ti ti-lock" aria-hidden="true"></i> Finalized</span>`:''}
+            ${canSeeMinutes&&!minutesFinalized&&m.minutes&&manage?`<button class="btn btn-sm btn-ghost" onclick="finalizeMinutes(${m.id})" title="Lock minutes — only admin can edit after this"><i class="ti ti-lock" aria-hidden="true"></i> Finalize</button>`:''}
+            ${canSeeMinutes&&canEditNotes?`<button class="btn btn-sm btn-ghost" id="minutes-edit-btn" onclick="toggleMinutesEdit(${m.id})"><i class="ti ti-${m.minutes?'edit':'plus'}" aria-hidden="true"></i> ${m.minutes?'Edit':'Add'}</button>`:''}
           </div>
         </div>
         <div id="minutes-view">
-          ${m.minutes
+          ${canSeeMinutes?(m.minutes
             ?`<div class="${isDV(m.minutes)?'dv-text':''}" style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:${isDV(m.minutes)?'15':'13'}px;white-space:pre-wrap;line-height:1.6;max-height:180px;overflow-y:auto">${esc(m.minutes)}</div>${m.minutes_updated_at?`<div style="font-size:10px;color:var(--faint);margin-top:4px">Last updated ${new Date(m.minutes_updated_at).toLocaleString()}</div>`:''}`
-            :`<div style="color:var(--faint);font-size:13px;padding:8px 0">No minutes recorded yet.</div>`}
+            :`<div style="color:var(--faint);font-size:13px;padding:8px 0">No minutes recorded yet.</div>`)
+            :`<div style="color:var(--faint);font-size:13px;padding:8px 0"><i class="ti ti-lock" aria-hidden="true"></i> Only visible to participants.</div>`}
         </div>
         ${canEditNotes?`<div id="minutes-edit" style="display:none">
           <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
@@ -1657,10 +1660,10 @@ function viewMeetingModal(m){
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div class="section-title" style="margin:0">Documents</div>
-          ${manage?`<button class="btn btn-sm btn-ghost" onclick="toggleAddDoc()"><i class="ti ti-paperclip" aria-hidden="true"></i> Attach</button>`:''}
+          ${canSeeMinutes&&manage?`<button class="btn btn-sm btn-ghost" onclick="toggleAddDoc()"><i class="ti ti-paperclip" aria-hidden="true"></i> Attach</button>`:''}
         </div>
-        ${renderDocList(m,manage)}
-        ${manage?`<div id="add-doc-form" style="display:none;margin-top:10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px">
+        ${canSeeMinutes?renderDocList(m,manage):`<div style="color:var(--faint);font-size:13px;padding:8px 0"><i class="ti ti-lock" aria-hidden="true"></i> Only visible to participants.</div>`}
+        ${canSeeMinutes&&manage?`<div id="add-doc-form" style="display:none;margin-top:10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px">
           <div class="field" style="margin-bottom:8px"><label>Name</label><input id="doc-name" placeholder="e.g. Q3 Report, Agenda"/></div>
           <div class="field" style="margin-bottom:8px"><label>Link</label><input id="doc-url" placeholder="https://drive.google.com/…"/></div>
           <div style="display:flex;gap:8px;justify-content:flex-end">
