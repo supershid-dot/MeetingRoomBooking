@@ -923,8 +923,8 @@ function switchTab(id){
   document.querySelectorAll('.tbb[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
   document.querySelectorAll('.sb-item[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
   if(id==='home'){renderHome();}
-  else if(id==='calendar'){renderCal();}
-  else if(id==='rooms'){renderRooms();}
+  else if(id==='calendar'){weekOffset=0;selectedDayIdx=null;renderCal();}
+  else if(id==='rooms'){rmWeekOffset=0;rmDayIdx=null;renderRooms();}
   else if(id==='meetings'){renderMeetingsList();}
   else if(id==='notif'){renderNotifications();}
   else if(id==='admin'){renderAdmin();}
