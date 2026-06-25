@@ -735,7 +735,7 @@ async function UPSERT(t,b){const r=await sbF(t,{method:'POST',body:JSON.stringif
 async function DEL(t,p){const r=await sbF(t+'?'+p,{method:'DELETE'});if(r.error)throw new Error(r.error.message);}
 
 /* =================== CONFIG =================== */
-function loadCfg(){const u=localStorage.getItem('sb_url'),k=localStorage.getItem('sb_key'),t=localStorage.getItem('sb_token');if(t)SB_TOKEN=t;return u&&k?{u,k}:null;}
+function loadCfg(){const u=localStorage.getItem('sb_url')||'https://xvwileiyquqxxtzqxghm.supabase.co',k=localStorage.getItem('sb_key')||'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2d2lsZWl5cXVxeHh0enF4Z2htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2Njc3MDQsImV4cCI6MjA5NzI0MzcwNH0.35G9jKMFoi5IQLnwjeFEsD4ghjtB_XCWcIZ4ecKzwpE',t=localStorage.getItem('sb_token');if(t)SB_TOKEN=t;return u&&k?{u,k}:null;}
 async function saveConfig(){
   const url=document.getElementById('cfg-url').value.trim(),key=document.getElementById('cfg-key').value.trim(),err=document.getElementById('cfg-err');
   if(!url||!key){showAlert(err,'Both fields required.');return;}
