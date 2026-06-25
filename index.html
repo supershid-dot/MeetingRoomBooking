@@ -216,6 +216,7 @@ tbody tr:hover td{background:var(--panel2)}
 .wg-slot.halfhour{border-bottom-color:var(--line2)}
 .wg-tl.half{color:var(--dim)}
 .wg-block{position:absolute;inset:1px;border-radius:4px;padding:2px 5px;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
+.wg-block-time{font-size:9px;font-family:var(--mono);opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 .wg-block-title{font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
 .wg-block-sub{font-size:9px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 .wg-plus{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;color:var(--accent);font-size:13px;transition:opacity var(--ease)}
@@ -1081,7 +1082,7 @@ function buildWeekGrid(gridEl,dates,today,meetings,opts){
         cell.style.background=c.bg;
         const blk=document.createElement('div');blk.className='wg-block';blk.style.cssText=`background:${c.bg};border:1px solid ${c.br}`;
         const title=canSee?esc(m.title):'Private';
-        blk.innerHTML=`<div class="wg-block-title" style="color:${c.tx}">${title}</div><div class="wg-block-sub" style="color:${c.tx}">${esc(opts.blockSub?opts.blockSub(m):(m.section_name||''))}</div>`;
+        blk.innerHTML=`<div class="wg-block-time" style="color:${c.tx}">${fTime(m.start_slot)}–${fTime(m.start_slot+m.duration)}</div><div class="wg-block-title" style="color:${c.tx}">${title}</div><div class="wg-block-sub" style="color:${c.tx}">${esc(opts.blockSub?opts.blockSub(m):(m.section_name||''))}</div>`;
         cell.appendChild(blk);cell.onclick=()=>viewMeetingModal(m);
       }else if(bks.length>0){
         const m=bks[0];const c=meetingColor(m);cell.style.background=c.bg;
