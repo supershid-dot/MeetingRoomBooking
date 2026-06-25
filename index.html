@@ -806,7 +806,7 @@ async function doLogin(){
         /* Edge Function not deployed yet — fall through to direct auth */
       }else{
         const data=await res.json().catch(()=>({}));
-        showAlert(err,data.error||'Login failed.');return;
+        showAlert(err,data.error||data.message||'Login failed (HTTP '+res.status+').');return;
       }
     }catch(fe){/* network error — Edge Function not reachable, use direct auth */}
 
