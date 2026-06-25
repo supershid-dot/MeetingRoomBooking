@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS staff (
 -- Graceful upgrade: add new columns to existing staff table
 ALTER TABLE staff ADD COLUMN IF NOT EXISTS can_view_all      boolean NOT NULL DEFAULT false;
 ALTER TABLE staff ADD COLUMN IF NOT EXISTS can_create_groups boolean NOT NULL DEFAULT false;
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS can_request_users boolean NOT NULL DEFAULT false;
 ALTER TABLE staff ADD COLUMN IF NOT EXISTS telegram_chat_id  text;
 
 -- Default system admin (login: SVC000 / Admin1234, forced to reset)

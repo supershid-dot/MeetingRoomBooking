@@ -836,7 +836,7 @@ async function doLogin(){
 
     if(!user){
       /* Direct DB auth (used until Edge Function is deployed) */
-      const rows=await GET('staff','select=id,svc_no,name,email,section_id,role,active,rank_short,designation,telegram_chat_id,can_view_all,can_create_groups,must_reset_password,password,sections!staff_section_id_fkey(id,name)&svc_no=ilike.'+encodeURIComponent(svc)+'&active=eq.true');
+      const rows=await GET('staff','select=id,svc_no,name,email,section_id,role,active,rank_short,designation,telegram_chat_id,can_view_all,can_create_groups,can_request_users,must_reset_password,password,sections!staff_section_id_fkey(id,name)&svc_no=ilike.'+encodeURIComponent(svc)+'&active=eq.true');
       if(!rows.length){showAlert(err,'Account not found or inactive.');return;}
       user=rows[0];
       const ok=await verifyPwd(pwd,user.password);
@@ -876,7 +876,7 @@ async function loadAll(){
   const[secs,rooms,staff]=await Promise.all([
     GET('sections','select=*&order=name.asc'),
     GET('rooms','select=*&order=name.asc'),
-    GET('staff','select=id,svc_no,name,email,section_id,role,active,rank_short,designation,telegram_chat_id,can_view_all,can_create_groups,must_reset_password,sections!staff_section_id_fkey(id,name)&order=name.asc&active=eq.true')
+    GET('staff','select=id,svc_no,name,email,section_id,role,active,rank_short,designation,telegram_chat_id,can_view_all,can_create_groups,can_request_users,must_reset_password,sections!staff_section_id_fkey(id,name)&order=name.asc&active=eq.true')
   ]);
   DB.sections=secs;DB.rooms=rooms;DB.staff=staff;
   secs.forEach(s=>getSC(s.name));
@@ -928,7 +928,8 @@ function buildNav(){
   </div>
   <button class="sb-footer-btn" onclick="openChangePwdModal()"><i class="ti ti-lock" aria-hidden="true"></i>Change password</button>
   <button class="sb-footer-btn" onclick="openMyLeaveModal()"><i class="ti ti-beach" aria-hidden="true"></i>My leave</button>
-  <button class="sb-footer-btn" onclick="openNewUserRequest()"><i class="ti ti-user-plus" aria-hidden="true"></i>Request new user</button>
+  ${(U.role==='admin'||U.can_request_users)?`<button class="sb-footer-btn" onclick="openNewUserRequest()"><i class="ti ti-user-plus" aria-hidden="true"></i>Request new user</button>`:''}
+
   <button class="sb-footer-btn" onclick="toggleTheme()"><i class="ti ti-moon" id="theme-icon-sb" aria-hidden="true"></i>Toggle theme</button>
   <button class="sb-footer-btn" onclick="doLogout()"><i class="ti ti-logout" aria-hidden="true"></i>Sign out</button>`;
   // Show Pre-book button for admin only
@@ -2700,6 +2701,7 @@ function openModal(type,id){
         <div><div class="section-title">Also manages sections <span style="font-size:10px;font-weight:400;text-transform:none;color:var(--faint)">(can view &amp; manage meetings)</span></div>${extraSecHtml}</div>
         <label class="toggle-row"><input type="checkbox" id="m-admin"${s.role==='admin'?' checked':''}/><span>Admin access</span></label>
         <label class="toggle-row"><input type="checkbox" id="m-viewall"${s.can_view_all?' checked':''}/><span>Can view everyone's schedule</span></label>
+        <label class="toggle-row"><input type="checkbox" id="m-requsers"${s.can_request_users?' checked':''}/><span>Can request new user accounts</span></label>
       </div></div>
       <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="updateStaff('${s.svc_no}')">Save</button></div>`);
   } else if(type==='reset-pwd'){
@@ -2782,15 +2784,16 @@ async function updateStaff(svc_no){
   const section_id=parseInt(document.getElementById('m-ss').value);
   const role=document.getElementById('m-admin').checked?'admin':'staff';
   const can_view_all=document.getElementById('m-viewall').checked;
+  const can_request_users=document.getElementById('m-requsers').checked;
   const extraSecIds=Array.from(document.querySelectorAll('.ss-extra:checked')).map(c=>parseInt(c.value));
   try{
-    await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc_no),{name,rank_short,designation,email,telegram_chat_id,section_id,role,can_view_all});
+    await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc_no),{name,rank_short,designation,email,telegram_chat_id,section_id,role,can_view_all,can_request_users});
     const staffRow=DB.staff.find(s=>s.svc_no===svc_no);
     if(staffRow){
       try{await DEL('staff_sections','staff_id=eq.'+staffRow.id);}catch(e){}
       if(extraSecIds.length)await Promise.all(extraSecIds.map(sid=>POST('staff_sections',{staff_id:staffRow.id,section_id:sid})));
     }
-    if(U.svc_no===svc_no){U.can_view_all=can_view_all;U.role=role;}
+    if(U.svc_no===svc_no){U.can_view_all=can_view_all;U.can_request_users=can_request_users;U.role=role;}
     await loadAll();closeModal();renderAdmin();showToast('Staff updated');
   }catch(e){alert(e.message);}
 }
