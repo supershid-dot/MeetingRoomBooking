@@ -1610,7 +1610,7 @@ function viewMeetingModal(m){
         (myRsvp?`<div class="hr"></div><div class="alert ${myRsvp.rsvp==='accepted'?'a-good':'a-bad'}"><i class="ti ti-${myRsvp.rsvp==='accepted'?'check':'x'}" aria-hidden="true"></i>You responded: <strong>${myRsvp.rsvp}</strong>${myRsvp.rsvp_note?' — '+esc(myRsvp.rsvp_note):''} <button class="btn btn-sm btn-ghost" onclick="rsvpChange(${m.id})" style="margin-left:8px;padding:3px 8px;font-size:11px">Change</button></div>`:'')}
       </div>
       <div class="vm-right">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        ${isParticipant?`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div class="section-title" style="margin:0">My notes</div>
           <span style="font-size:10px;color:var(--faint)">Private — only you can see</span>
         </div>
@@ -1626,7 +1626,7 @@ function viewMeetingModal(m){
           <button class="btn btn-sm" onclick="savePersonalNotes(${myRsvp?myRsvp.id:'null'})">Save</button>
         </div>
 
-        <div class="hr" style="margin:14px 0"></div>
+        <div class="hr" style="margin:14px 0"></div>`:''}
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div class="section-title" style="margin:0">Meeting minutes <span style="font-size:10px;color:var(--faint);text-transform:none;font-weight:400">— shared with participants</span></div>
