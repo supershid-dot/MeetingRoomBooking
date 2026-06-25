@@ -2095,17 +2095,28 @@ async function handleRsvpCallback(token,cq){
   const emoji=action==='a'?'✅':'❌';
   try{
     await PATCH('participants',`id=eq.${participantId}`,{rsvp});
-    await fetch(`https://api.telegram.org/bot${token}/editMessageText`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        chat_id:cq.message.chat.id,message_id:cq.message.message_id,
-        text:cq.message.text+`\n\n${emoji} You responded: <b>${rsvp}</b>`,
-        parse_mode:'HTML',reply_markup:{inline_keyboard:[]}
-      })
-    });
+    // Answer the callback query immediately (Telegram has a 10s timeout)
     await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({callback_query_id:cq.id,text:`${emoji} Response recorded`,show_alert:false})
+    });
+    // Remove the inline keyboard buttons without touching the message text
+    await fetch(`https://api.telegram.org/bot${token}/editMessageReplyMarkup`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        chat_id:cq.message.chat.id,message_id:cq.message.message_id,
+        reply_markup:{inline_keyboard:[]}
+      })
+    });
+    // Send a reply so the user sees their recorded response
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        chat_id:cq.message.chat.id,
+        text:`${emoji} You responded: <b>${rsvp}</b>`,
+        parse_mode:'HTML',
+        reply_to_message_id:cq.message.message_id
+      })
     });
     if(!document.getElementById('tab-notif').classList.contains('hidden'))renderNotifications();
     if(!document.getElementById('tab-calendar').classList.contains('hidden'))renderCal();
