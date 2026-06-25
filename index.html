@@ -1398,9 +1398,9 @@ async function checkParticipantBusy(p){
   const dateEl=document.getElementById('nm-date')||document.getElementById('em-date');
   const startEl=document.getElementById('nm-start'),durEl=document.getElementById('nm-dur');
   if(!dateEl||!startEl||!durEl||!dateEl.value||!durEl.value)return;
-  const busy=await isStaffBusy(p.staff_id,dateEl.value,parseInt(startEl.value)||0,parseInt(durEl.value)||1,window._editMeetingId||null);
-  p.busy=busy;renderParticipantList();
-  if(busy)showToast(`${p.name} is already booked at this time — added anyway`);
+  const conflict=await isStaffBusy(p.staff_id,dateEl.value,parseInt(startEl.value)||0,parseInt(durEl.value)||1,window._editMeetingId||null);
+  p.busy=conflict;renderParticipantList();
+  if(conflict)showToast(`${p.name} is booked ${fTime(conflict.start_slot)}–${fTime(conflict.start_slot+conflict.duration)} — added anyway`);
 }
 async function isStaffBusy(staffId,date,start,dur,excludeId){
   let ms;
@@ -1408,14 +1408,14 @@ async function isStaffBusy(staffId,date,start,dur,excludeId){
     ms=_calMtgs.filter(m=>m.date===date&&!m.is_cancelled);
   }else{
     try{ms=await GET('meetings',`select=id,start_slot,duration,created_by,participants(staff_id,rsvp)&date=eq.${date}&is_cancelled=not.is.true`);}
-    catch(e){return false;}
+    catch(e){return null;}
   }
-  return(ms||[]).some(m=>{
+  return(ms||[]).find(m=>{
     if(m.id===excludeId)return false;
     if(!slotsOverlap(start,dur,m.start_slot,m.duration))return false;
     if(m.created_by===staffId)return true;
     return(m.participants||[]).some(p=>p.staff_id===staffId&&p.rsvp!=='declined');
-  });
+  })||null;
 }
 function addExtParticipant(){
   const name=document.getElementById('nm-ext-name').value.trim();
@@ -1448,7 +1448,7 @@ function renderParticipantList(){
     return`<div class="prow">
       <div class="prow-main">
         <div class="prow-avatar" style="background:${p.is_external?'var(--ext-bg)':'var(--accent-bg)'};color:${p.is_external?'var(--ext-ink)':'var(--accent-ink)'}">${initials(_pn)}</div>
-        <div style="min-width:0"><div class="prow-name">${esc(_pn)}</div><div class="prow-role">${p.is_external?'External guest':(p.onLeave?'<span style="color:var(--warn-ink)">🏖 On '+esc(p.onLeave.leave_type)+'</span>':(p.busy?'<span style="color:var(--warn-ink)">⚠ Busy at this time</span>':''))}</div></div>
+        <div style="min-width:0"><div class="prow-name">${esc(_pn)}</div><div class="prow-role">${p.is_external?'External guest':(p.onLeave?'<span style="color:var(--warn-ink)">🏖 On '+esc(p.onLeave.leave_type)+'</span>':(p.busy?`<span style="color:var(--warn-ink)">⚠ Busy ${fTime(p.busy.start_slot)}–${fTime(p.busy.start_slot+p.busy.duration)}</span>`:''))}</div></div>
       </div>
       ${p.rsvp==='accepted'&&isSelf?'<span class="badge b-good">You</span>':''}
       ${!isSelf?`<button class="prow-rm" onclick="removeParticipant(${i})"><i class="ti ti-x" aria-hidden="true"></i></button>`:''}
