@@ -121,6 +121,11 @@ tbody tr:hover td{background:var(--panel2)}
 .tag-pub{background:var(--good-bg);color:var(--good-ink)}
 .tag-priv{background:var(--warn-bg);color:var(--warn-ink)}
 .tag-mode{background:var(--panel2);color:var(--dim)}
+.tag-live{background:var(--bad-bg);color:var(--bad-ink)}
+.tag-live::before{content:'● ';animation:pulse-live 1.2s ease-in-out infinite}
+@keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.3}}
+.tag-upcoming{background:var(--accent-bg);color:var(--accent-ink)}
+.tag-finished{background:var(--panel2);color:var(--dim)}
 .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:var(--mono);text-transform:uppercase;letter-spacing:.03em}
 .b-good{background:var(--good-bg);color:var(--good-ink)}
 .b-bad{background:var(--bad-bg);color:var(--bad-ink)}
@@ -2261,11 +2266,13 @@ function _mcard(m){
   const rsvpDot=myP?`<span class="rsvp-dot rsvp-${myP.rsvp}" style="display:inline-block"></span>`:'';
   const _isPast=new Date(m.date+'T00:00:00')<(()=>{const t=new Date();t.setHours(0,0,0,0);return t;})();
   const _preB=m.is_prebooked;const _cancelled=m.is_cancelled;
+  let _statusTag='';
+  if(m.date===todayStr()&&!_cancelled){const _now=new Date();const _ns=Math.floor((_now.getHours()*60+_now.getMinutes())/15);if(_ns>=m.start_slot&&_ns<m.start_slot+m.duration)_statusTag='<span class="tag tag-live">LIVE</span>';else if(_ns<m.start_slot)_statusTag='<span class="tag tag-upcoming">Upcoming</span>';else _statusTag='<span class="tag tag-finished">Finished</span>';}
   return`<div class="mcard${_isPast?' mcard-past':''}${_cancelled?' mcard-cancelled':''}${_preB?' mcard-prebooked':''}${m.type==='external'?' mcard-ext':''}" onclick="viewMeetingAndLoad(${m.id})">
     <div class="mcard-body">
       <div class="mcard-header">
         <div class="mcard-title">${canSee?esc(m.title):'Private meeting'}${_cancelled?'<span class="badge b-bad" style="margin-left:7px;vertical-align:middle;font-size:10px">CANCELLED</span>':''}${_preB?'<span style="margin-left:6px;font-size:10px;font-weight:700;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 5px;vertical-align:middle">DRAFT</span>':''}${m.recurrence_id?'<span style="margin-left:5px;font-size:11px;color:var(--accent)" title="Recurring meeting">&#8635;</span>':''}</div>
-        <span class="tag ${m.type==='external'?'tag-ext':'tag-int'}">${m.type==='internal'?'Internal':'External'}</span>
+        <div style="display:flex;gap:5px;align-items:center">${_statusTag}<span class="tag ${m.type==='external'?'tag-ext':'tag-int'}">${m.type==='internal'?'Internal':'External'}</span></div>
       </div>
       <div class="mcard-meta">
         <span><i class="ti ti-calendar" aria-hidden="true"></i>${new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>
