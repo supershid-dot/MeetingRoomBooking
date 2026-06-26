@@ -889,7 +889,7 @@ async function loadAll(){
   try{DB.leaves=await GET('staff_leaves','select=*&order=date_from.asc');}catch(e){DB.leaves=[];}
   try{const cfg=await GET('app_config','select=*');DB.config={};cfg.forEach(r=>{DB.config[r.key]=r.value;});}catch(e){DB.config={};}
   try{DB.staff_sections=await GET('staff_sections','select=*');}catch(e){DB.staff_sections=[];}
-  try{DB.staff_schedule_access=await GET('staff_schedule_access','select=*');}catch(e){DB.staff_schedule_access=[];}
+  try{DB.staff_schedule_access=await GET('staff_schedule_access','select=*');DB._ssa_ready=true;}catch(e){DB.staff_schedule_access=[];DB._ssa_ready=false;}
   if(selectedStaffId==null)selectedStaffId=U.id;
   if(selectedRoomId==null&&DB.rooms.length)selectedRoomId=DB.rooms[0].id;
 }
@@ -2794,10 +2794,10 @@ function openModal(type,id){
         <label class="toggle-row"><input type="checkbox" id="m-admin"${s.role==='admin'?' checked':''}/><span>Admin access</span></label>
         <label class="toggle-row"><input type="checkbox" id="m-viewall"${s.can_view_all?' checked':''}/><span>Can view everyone's schedule</span></label>
         <label class="toggle-row"><input type="checkbox" id="m-requsers"${s.can_request_users?' checked':''}/><span>Can request new user accounts</span></label>
-        <div style="margin-top:4px"><div class="section-title">Can view schedule of <span style="font-size:10px;font-weight:400;text-transform:none;color:var(--faint)">(explicit calendar access beyond own section)</span></div>
+        ${DB._ssa_ready?`<div style="margin-top:4px"><div class="section-title">Can view schedule of <span style="font-size:10px;font-weight:400;text-transform:none;color:var(--faint)">(explicit calendar access beyond own section)</span></div>
           <input type="text" placeholder="Search staff…" oninput="filterGrpList(this,'m-ssa-list')" style="width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--inp);color:var(--ink);margin-bottom:4px"/>
           <div class="chk-list" id="m-ssa-list">${ssaHtml}</div>
-        </div>
+        </div>`:''}
       </div></div>
       <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="updateStaff('${s.svc_no}')">Save</button></div>`);
   } else if(type==='reset-pwd'){
@@ -2888,11 +2888,11 @@ async function updateStaff(svc_no){
     if(staffRow){
       try{await DEL('staff_sections','staff_id=eq.'+staffRow.id);}catch(e){}
       if(extraSecIds.length)await Promise.all(extraSecIds.map(sid=>POST('staff_sections',{staff_id:staffRow.id,section_id:sid})));
-      const accessTargetIds=Array.from(document.querySelectorAll('.ssa-target:checked')).map(c=>parseInt(c.value));
-      try{
+      if(DB._ssa_ready){
+        const accessTargetIds=Array.from(document.querySelectorAll('.ssa-target:checked')).map(c=>parseInt(c.value));
         await DEL('staff_schedule_access','viewer_id=eq.'+staffRow.id);
         if(accessTargetIds.length)await Promise.all(accessTargetIds.map(tid=>POST('staff_schedule_access',{viewer_id:staffRow.id,target_id:tid})));
-      }catch(e){}
+      }
     }
     if(U.svc_no===svc_no){U.can_view_all=can_view_all;U.can_request_users=can_request_users;U.role=role;}
     await loadAll();closeModal();renderAdmin();showToast('Staff updated');
