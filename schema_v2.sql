@@ -172,6 +172,11 @@ ALTER TABLE meetings ADD COLUMN IF NOT EXISTS is_cancelled      boolean DEFAULT 
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS cancelled_at      timestamptz;
 ALTER TABLE meetings ADD COLUMN IF NOT EXISTS cancelled_reason  text;
 
+-- ─────────────────────────── MEETING LOCK ─────────────────────────
+-- Creator can lock a meeting to prevent edits/cancellations by anyone
+-- except admin. Creator can unlock at any time.
+ALTER TABLE meetings ADD COLUMN IF NOT EXISTS is_locked boolean DEFAULT false;
+
 -- ─────────────────────────── MEETING NOTES ────────────────────────
 ALTER TABLE meetings     ADD COLUMN IF NOT EXISTS minutes              text;
 ALTER TABLE meetings     ADD COLUMN IF NOT EXISTS minutes_updated_at   timestamptz;

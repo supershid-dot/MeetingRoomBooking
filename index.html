@@ -803,6 +803,7 @@ function visibleStaff(){
 /* Creator OR staff in an accessible section OR admin can manage a meeting. */
 function canManage(m){
   if(U.role==='admin')return true;
+  if(m.is_locked)return false;  // locked: admin-only until creator unlocks
   if(m.created_by===U.id)return true;
   const secIds=myAccessibleSecIds();
   if(m.section_id&&secIds.has(m.section_id))return true;
@@ -1583,6 +1584,7 @@ function viewMeetingModal(m){
         <span class="tag ${m.type==='external'?'tag-ext':'tag-int'}">${m.type==='internal'?'<i class="ti ti-door" aria-hidden="true"></i> Internal':'<i class="ti ti-building" aria-hidden="true"></i> External'}</span>
         <span class="tag tag-mode"><i class="ti ${MODE_ICON[mode]}" aria-hidden="true"></i> ${MODE_LABEL[mode]}</span>
         <span class="tag ${m.privacy==='private'?'tag-priv':'tag-pub'}">${m.privacy==='private'?'<i class="ti ti-eye-off" aria-hidden="true"></i> Private':'<i class="ti ti-eye" aria-hidden="true"></i> Public'}</span>
+        ${m.is_locked?'<span class="tag" style="background:var(--warn-bg,#fef3c7);color:var(--warn-ink,#b45309)"><i class="ti ti-lock" aria-hidden="true"></i> Locked</span>':''}
       </div>
     </div>
     <button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button>
@@ -1590,6 +1592,7 @@ function viewMeetingModal(m){
   <div class="modal-body">
     ${isCancelled?`<div class="alert a-bad" style="margin-bottom:14px"><i class="ti ti-ban" aria-hidden="true"></i> <strong>Meeting cancelled</strong>${m.cancelled_at?' on '+new Date(m.cancelled_at).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'}):''}${m.cancelled_reason?' — '+esc(m.cancelled_reason):''}. The room and time slot have been freed.</div>`:''}
     ${!isCancelled&&m.is_prebooked?`<div class="alert a-warn" style="margin-bottom:14px"><i class="ti ti-calendar-clock" aria-hidden="true"></i> <strong>Pre-booked slot</strong> — details are pending.${canEditNow?` Click <strong>Complete Details</strong> below to fill in the meeting information.`:' Contact your admin to complete this booking.'}</div>`:''}
+    ${m.is_locked&&U.role!=='admin'?`<div class="alert a-warn" style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><i class="ti ti-lock" aria-hidden="true"></i><span><strong>Meeting locked</strong> — editing and cancellation are disabled.${m.created_by===U.id?' Unlock below to allow changes.':' Only the organiser or admin can unlock this meeting.'}</span>${m.created_by===U.id?`<button class="btn btn-sm btn-warn" onclick="toggleMeetingLock(${m.id},true)" style="margin-left:auto"><i class="ti ti-lock-open" aria-hidden="true"></i> Unlock</button>`:''}</div>`:''}
     <div class="vm-grid">
       <div class="vm-left">
         <div class="r2" style="margin-bottom:12px">
@@ -1722,9 +1725,22 @@ function viewMeetingModal(m){
   <div class="modal-foot">
     <button class="btn" onclick="closeModal()">Close</button>
     ${isParticipant?`<button class="btn btn-sm btn-ghost" onclick="downloadICS(window._viewingMeeting)" title="Add to calendar">&#128197; Add to calendar</button>`:''}
+    ${!isCancelled&&m.created_by===U.id&&U.role!=='admin'?`<button class="btn btn-sm ${m.is_locked?'btn-warn':'btn-ghost'}" onclick="toggleMeetingLock(${m.id},${!!m.is_locked})"><i class="ti ti-${m.is_locked?'lock-open':'lock'}" aria-hidden="true"></i>${m.is_locked?'Unlock':'Lock'}</button>`:''}
     ${canEditNow?`<button class="btn ${m.is_prebooked?'btn-accent':'btn-warn'}" onclick="openEditMeetingModal(${m.id})"><i class="ti ti-${m.is_prebooked?'calendar-check':'edit'}" aria-hidden="true"></i>${m.is_prebooked?'Complete Details':'Edit'}</button>
     ${!isCancelled?`<button class="btn btn-danger" onclick="openCancelModal(${m.id})"><i class="ti ti-trash" aria-hidden="true"></i>Cancel</button>`:''}`:''}
   </div>`);
+}
+
+async function toggleMeetingLock(meetingId,currentlyLocked){
+  const locking=!currentlyLocked;
+  if(locking&&!confirm('Lock this meeting?\n\nWhile locked, no one else — including staff in your section — can edit or cancel it. Only admin can still make changes.\n\nYou can unlock it anytime.'))return;
+  try{
+    await PATCH('meetings',`id=eq.${meetingId}`,{is_locked:locking});
+    showToast(locking?'Meeting locked — only admin can make changes now':'Meeting unlocked');
+    const rows=await GET('meetings',`select=*,participants(*)&id=eq.${meetingId}`);
+    if(rows[0])viewMeetingModal(rows[0]);
+    refreshActiveViews();
+  }catch(e){alert(e.message);}
 }
 
 async function markAttendance(pid,status,meetingId){
@@ -2311,7 +2327,7 @@ function _mcard(m){
   return`<div class="mcard${_isPast?' mcard-past':''}${_cancelled?' mcard-cancelled':''}${_preB?' mcard-prebooked':''}${m.type==='external'?' mcard-ext':''}" onclick="viewMeetingAndLoad(${m.id})">
     <div class="mcard-body">
       <div class="mcard-header">
-        <div class="mcard-title">${canSee?esc(m.title):'Private meeting'}${_cancelled?'<span class="badge b-bad" style="margin-left:7px;vertical-align:middle;font-size:10px">CANCELLED</span>':''}${_preB?'<span style="margin-left:6px;font-size:10px;font-weight:700;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 5px;vertical-align:middle">DRAFT</span>':''}${m.recurrence_id?'<span style="margin-left:5px;font-size:11px;color:var(--accent)" title="Recurring meeting">&#8635;</span>':''}</div>
+        <div class="mcard-title">${canSee?esc(m.title):'Private meeting'}${_cancelled?'<span class="badge b-bad" style="margin-left:7px;vertical-align:middle;font-size:10px">CANCELLED</span>':''}${_preB?'<span style="margin-left:6px;font-size:10px;font-weight:700;background:#f59e0b;color:#fff;border-radius:4px;padding:1px 5px;vertical-align:middle">DRAFT</span>':''}${m.recurrence_id?'<span style="margin-left:5px;font-size:11px;color:var(--accent)" title="Recurring meeting">&#8635;</span>':''}${m.is_locked?'<i class="ti ti-lock" style="margin-left:6px;font-size:11px;color:var(--warn-ink,#b45309)" title="Meeting locked" aria-hidden="true"></i>':''}</div>
         <div style="display:flex;gap:5px;align-items:center">${_statusTag}<span class="tag ${m.type==='external'?'tag-ext':'tag-int'}">${m.type==='internal'?'Internal':'External'}</span></div>
       </div>
       <div class="mcard-meta">
@@ -3076,167 +3092,88 @@ document.addEventListener('click',function(e){const w=document.getElementById('p
 
 /* =================== USER MANUAL =================== */
 function openUserManual(){
-  showModal(`<div class="modal-head"><div class="modal-title"><i class="ti ti-help-circle" aria-hidden="true"></i> MeetFlow User Manual</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
-<div class="modal-body" style="padding:0">
-<div style="padding:0 18px 6px">
-  <p style="font-size:13px;color:var(--faint);margin:10px 0 0">A quick reference guide for all MeetFlow features.</p>
+  const S=(icon,color,bg)=>`<div style="width:42px;height:42px;border-radius:10px;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ${icon}" style="font-size:20px;color:${color}" aria-hidden="true"></i></div>`;
+  const step=(n,txt)=>`<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px"><div style="width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${n}</div><div style="font-size:13px;line-height:1.6;padding-top:3px">${txt}</div></div>`;
+  const tip=(icon,txt)=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--surface2,var(--panel));border-radius:8px;margin-bottom:6px;font-size:12.5px;line-height:1.5"><i class="ti ${icon}" style="color:var(--accent);flex-shrink:0;margin-top:2px" aria-hidden="true"></i><span>${txt}</span></div>`;
+  const sec=(title,icon,color,bg,body)=>`<div style="margin-bottom:20px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">${S(icon,color,bg)}<div style="font-size:15px;font-weight:700">${title}</div></div>${body}</div>`;
+  showModal(`<div class="modal-head"><div class="modal-title"><i class="ti ti-help-circle" aria-hidden="true"></i> MeetFlow Guide</div><button class="modal-close" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+<div class="modal-body" style="padding:16px 18px 8px">
+
+<!-- Hero -->
+<div style="background:var(--accent);border-radius:12px;padding:16px;margin-bottom:20px;color:var(--accent-ink)">
+  <div style="font-size:17px;font-weight:700;margin-bottom:4px">MeetFlow</div>
+  <div style="font-size:13px;opacity:.88">Meeting scheduling &amp; room booking for your organisation</div>
+  <div style="display:flex;gap:10px;margin-top:12px">
+    <div style="flex:1;background:rgba(255,255,255,.15);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:22px">📅</div>
+      <div style="font-size:11px;font-weight:600;margin-top:4px">Schedule Meetings</div>
+    </div>
+    <div style="flex:1;background:rgba(255,255,255,.15);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:22px">🏢</div>
+      <div style="font-size:11px;font-weight:600;margin-top:4px">Book Rooms</div>
+    </div>
+    <div style="flex:1;background:rgba(255,255,255,.15);border-radius:8px;padding:10px;text-align:center">
+      <div style="font-size:22px">📱</div>
+      <div style="font-size:11px;font-weight:600;margin-top:4px">Telegram Alerts</div>
+    </div>
+  </div>
 </div>
 
-<!-- SECTION: Getting Started -->
-<details open style="border-top:1px solid var(--border)">
-  <summary style="padding:12px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-    <i class="ti ti-login" aria-hidden="true"></i> Getting Started
-  </summary>
-  <div style="padding:0 18px 14px;font-size:13px;line-height:1.7;color:var(--body)">
-    <b>Logging in:</b> Enter your Service Number and password on the login screen. Your service number is not case-sensitive.<br><br>
-    <b>First login:</b> You will be prompted to set a new password before entering the app. Choose something memorable and secure.<br><br>
-    <b>Forgot password:</b> Tap <i>Forgot password?</i> on the login screen and enter your service number. The admin will be notified and your new temporary password will be sent to your Telegram.<br><br>
-    <b>Change password:</b> Tap your profile (top-right on mobile, bottom-left on desktop) → <i>Change password</i>.
-  </div>
-</details>
+${sec('Schedule a Meeting','ti-calendar-plus','#7c3aed','rgba(124,58,237,.12)',''+
+  step(1,'Go to the <b>Meetings</b> tab and tap <b>New</b>.')+
+  step(2,'Enter a title, date, start time and duration.')+
+  step(3,'Choose the type: <b>Internal</b> (staff only) or <b>External</b> (outside guests).')+
+  step(4,'Choose mode: <b>Physical</b> (pick a room), <b>Online</b> (paste a link), or <b>Both</b>.')+
+  step(5,'Add participants from your staff list or type an external name.')+
+  step(6,'Set privacy: <b>Public</b> (visible to your section) or <b>Private</b> (invite-only).')+
+  step(7,'Tap <b>Save</b>. Optionally send Telegram invites to notify participants.')+
+  tip('ti-lock','To protect your meeting from being edited by others, open it and tap <b>Lock</b> in the footer. Only admin can make changes while locked. You can unlock anytime.')+
+  tip('ti-repeat','For recurring meetings (daily/weekly/monthly), choose a recurrence pattern before saving.')
+)}
 
-<!-- SECTION: Home Dashboard -->
-<details style="border-top:1px solid var(--border)">
-  <summary style="padding:12px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-    <i class="ti ti-home" aria-hidden="true"></i> Home Dashboard
-  </summary>
-  <div style="padding:0 18px 14px;font-size:13px;line-height:1.7;color:var(--body)">
-    The Home tab is your personal dashboard.<br><br>
-    <b>Today's Meetings:</b> Shows only the meetings you are personally involved in — either as the organiser or a participant.<br><br>
-    <b>Next Meeting:</b> The countdown banner at the top shows your next upcoming meeting for today and how soon it starts.<br><br>
-    <b>Stats:</b> Quick counts for today's meetings and your pending RSVPs.<br><br>
-    <b>Quick Actions:</b> Shortcuts to schedule a new meeting, check room availability, or record leave.
-  </div>
-</details>
+${sec('Book a Meeting Room','ti-door','#0891b2','rgba(8,145,178,.12)',''+
+  step(1,'Go to the <b>Rooms</b> tab to see which rooms are free.')+
+  step(2,'Tap a room to view its weekly schedule — coloured blocks are booked slots.')+
+  step(3,'To book, create a meeting (Meetings → New) and select the room.')+
+  step(4,'The system warns you instantly if the room is already taken for that slot.')+
+  tip('ti-calendar-off','Rooms that have been blocked by admin for maintenance will show as unavailable and cannot be selected.')
+)}
 
-<!-- SECTION: Calendar -->
-<details style="border-top:1px solid var(--border)">
-  <summary style="padding:12px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-    <i class="ti ti-calendar" aria-hidden="true"></i> Calendar
-  </summary>
-  <div style="padding:0 18px 14px;font-size:13px;line-height:1.7;color:var(--body)">
-    <b>Navigating dates:</b> Swipe or tap the day strip at the top to jump to a date. Use the arrows to move a week at a time.<br><br>
-    <b>Week grid:</b> Shows all meetings for the week as colour-coded blocks. Tap any block to view details.<br><br>
-    <b>Agenda view:</b> The list below the grid shows meetings for the selected day in order.<br><br>
-    <b>Filtering by room:</b> Switch to the <i>Rooms</i> tab and select a room to see its calendar independently.<br><br>
-    <b>Colours:</b> Each section has its own colour. External meetings appear in a distinct colour to stand out.
-  </div>
-</details>
+${sec('Respond to an Invite (RSVP)','ti-checkbox','#059669','rgba(5,150,105,.12)',''+
+  tip('ti-brand-telegram','When someone adds you to a meeting and sends a Telegram invite, you receive a message with ✅ <b>Accept</b> and ❌ <b>Decline</b> buttons. Tap one — your response is recorded instantly.')+
+  tip('ti-bell','You can also respond from the <b>Notifications</b> tab in the app — it lists all meetings waiting for your RSVP.')+
+  tip('ti-note','You can add a short note with your response, e.g. "Will join after 10:30". The organiser can see this.')
+)}
 
-<!-- SECTION: Meetings -->
-<details style="border-top:1px solid var(--border)">
-  <summary style="padding:12px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-    <i class="ti ti-clipboard-list" aria-hidden="true"></i> Meetings
-  </summary>
-  <div style="padding:0 18px 14px;font-size:13px;line-height:1.7;color:var(--body)">
-    <b>Creating a meeting:</b> Tap <i>New</i> on the Meetings tab. Fill in the title, date, time, and duration. Add participants from staff or enter external names manually.<br><br>
-    <b>Meeting type:</b><br>
-    &nbsp;• <i>Internal</i> — between staff members<br>
-    &nbsp;• <i>External</i> — involves outside parties<br><br>
-    <b>Meeting mode:</b><br>
-    &nbsp;• <i>Physical</i> — select a room (or tick "No room needed")<br>
-    &nbsp;• <i>Online</i> — paste a meeting link (e.g. Zoom/Teams)<br>
-    &nbsp;• <i>Both</i> — room + link<br><br>
-    <b>Privacy:</b> <i>Public</i> meetings are visible to everyone in your section. <i>Private</i> meetings are only visible to the organiser and participants.<br><br>
-    <b>Recurring meetings:</b> When creating, choose a recurrence (daily, weekly, monthly). All instances are created at once. Editing one instance does not affect the others.<br><br>
-    <b>Cancelling:</b> Open the meeting → tap <i>Cancel meeting</i>. A reason is optional. Cancelled meetings remain visible but are struck through.<br><br>
-    <b>Meeting minutes:</b> After a meeting, the organiser (or admin) can open it and tap <i>Edit minutes</i> to record outcomes. Once finalised, minutes become read-only.
-  </div>
-</details>
+${sec('Set Up Telegram Notifications','ti-brand-telegram','#0ea5e9','rgba(14,165,233,.12)',''+
+  '<div style="font-size:13px;margin-bottom:10px">To receive meeting alerts on Telegram, your admin needs to save your <b>Telegram Chat ID</b> in your profile.</div>'+
+  '<div style="font-size:12.5px;font-weight:700;margin-bottom:8px;color:var(--dim)">How to get your Chat ID:</div>'+
+  step(1,'Open <b>Telegram</b> on your phone.')+
+  step(2,'Search for <b>@userinfobot</b> in the search bar.')+
+  step(3,'Tap the bot and press <b>Start</b>.')+
+  step(4,'The bot immediately replies with your <b>Chat ID</b> — a number like <code style="background:var(--panel);padding:1px 5px;border-radius:4px">123456789</code>.')+
+  step(5,'Send that number to your admin to link it to your account.')+
+  tip('ti-check','Once linked, you will automatically get meeting invites, updates, reminders, and cancellation notices via Telegram.')
+)}
 
-<!-- SECTION: RSVP & Attendance -->
-<details style="border-top:1px solid var(--border)">
-  <summary style="padding:12px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-    <i class="ti ti-checkbox" aria-hidden="true"></i> RSVP &amp; Attendance
-  </summary>
-  <div style="padding:0 18px 14px;font-size:13px;line-height:1.7;color:var(--body)">
-    <b>RSVP:</b> When you are added as a participant, your RSVP starts as <i>Pending</i>. You can accept or decline from:<br>
-    &nbsp;• The <i>Notifications</i> tab in the app<br>
-    &nbsp;• The ✅ / ❌ buttons in the Telegram message<br><br>
-    <b>RSVP note:</b> You can add a short note when responding (e.g. "Will join after 10 mins").<br><br>
-    <b>Attendance:</b> After the meeting, the organiser or admin can mark each participant as <i>Present</i>, <i>Absent</i>, or <i>Late</i>.<br><br>
-    <b>Personal notes:</b> Each participant can add private notes visible only to themselves on the meeting detail screen.
-  </div>
-</details>
+${sec('Your Home Dashboard','ti-home','#d97706','rgba(217,119,6,.12)',''+
+  tip('ti-calendar-due','<b>Today\'s Meetings</b> — shows only meetings you are involved in as organiser or participant.')+
+  tip('ti-clock','<b>Next Meeting</b> — the countdown banner shows your next meeting and how long until it starts.')+
+  tip('ti-chart-bar','<b>Stats</b> — quick count of today\'s meetings and pending RSVPs.')+
+  tip('ti-bolt','<b>Quick Actions</b> — shortcuts to schedule a meeting, check rooms, or record leave.')
+)}
 
-<!-- SECTION: Rooms -->
-<details style="border-top:1px solid var(--border)">
-  <summary style="padding:12px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-    <i class="ti ti-door" aria-hidden="true"></i> Rooms
-  </summary>
-  <div style="padding:0 18px 14px;font-size:13px;line-height:1.7;color:var(--body)">
-    <b>Availability:</b> The Rooms tab shows each room's weekly schedule. Green slots are free; coloured blocks are booked.<br><br>
-    <b>Booking:</b> To book a room, create a meeting and select the room — the system will warn you if there is a conflict.<br><br>
-    <b>Room blocks (admin only):</b> Admins can block a room for maintenance or other reasons from the Admin tab. Blocked dates appear on the room calendar and cannot be booked.
-  </div>
-</details>
+${sec('More Features','ti-dots-circle-horizontal','#6b7280','rgba(107,114,128,.12)',''+
+  tip('ti-file-text','<b>Meeting Minutes</b> — after a meeting, open it and tap "Edit minutes" to record outcomes. Finalise to make them read-only.')+
+  tip('ti-users-group','<b>Meeting Groups</b> — save preset groups of participants (requires permission) to add them all in one tap when scheduling.')+
+  tip('ti-beach','<b>My Leave</b> — record your annual, sick or other leave. Leave dates show on the calendar.')+
+  tip('ti-ban','<b>Cancelling a Meeting</b> — open the meeting → Cancel. The room slot is freed; the meeting stays visible as cancelled.')+
+  tip('ti-settings','<b>Admin</b> — manage staff accounts, sections, rooms, approve new-user requests and password resets.')
+)}
 
-<!-- SECTION: Telegram Integration -->
-<details style="border-top:1px solid var(--border)">
-  <summary style="padding:12px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-    <i class="ti ti-brand-telegram" aria-hidden="true"></i> Telegram Notifications
-  </summary>
-  <div style="padding:0 18px 14px;font-size:13px;line-height:1.7;color:var(--body)">
-    MeetFlow sends meeting invitations, updates, reminders, and cancellation notices directly to participants via Telegram.<br><br>
-    <b>Receiving notifications:</b> Your Telegram Chat ID must be saved in your staff profile. Once set, you will automatically receive messages from the MeetFlow bot.<br><br>
-    <b>RSVP via Telegram:</b> Tap ✅ <i>Accept</i> or ❌ <i>Decline</i> on the Telegram message. The buttons will disappear and your response is instantly recorded in the app.<br><br>
-    <b>Reminders:</b> A reminder is sent automatically 30 minutes before a meeting starts (requires the app to be open in a browser tab).<br><br>
-    <b style="display:block;margin-top:8px">How to find your Telegram Chat ID:</b>
-    1. Open Telegram and search for <b>@userinfobot</b><br>
-    2. Tap the bot and press <b>Start</b><br>
-    3. The bot replies instantly with your <b>Chat ID</b> (a number like <code>123456789</code>)<br>
-    4. Give that number to your admin to link it to your account<br><br>
-    <b>Update your own Telegram ID:</b> Admins and staff with admin access can update the Telegram Chat ID in the staff profile on the Admin tab.
-  </div>
-</details>
-
-<!-- SECTION: Notifications Tab -->
-<details style="border-top:1px solid var(--border)">
-  <summary style="padding:12px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-    <i class="ti ti-bell" aria-hidden="true"></i> Notifications Tab
-  </summary>
-  <div style="padding:0 18px 14px;font-size:13px;line-height:1.7;color:var(--body)">
-    The Notifications tab lists all meetings where your RSVP is pending. Tap a meeting to accept or decline directly from the app.<br><br>
-    <b>Sending invites:</b> When creating or editing a meeting, tap <i>Send Telegram invites</i> to push notifications to all participants who have a Telegram Chat ID set.
-  </div>
-</details>
-
-<!-- SECTION: Admin Features -->
-<details style="border-top:1px solid var(--border)">
-  <summary style="padding:12px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-    <i class="ti ti-settings" aria-hidden="true"></i> Admin Features
-  </summary>
-  <div style="padding:0 18px 14px;font-size:13px;line-height:1.7;color:var(--body)">
-    <i>Admin tab is visible to admin accounts only.</i><br><br>
-    <b>Staff management:</b> Create, edit, and deactivate staff accounts. Set roles, sections, and Telegram Chat IDs. Grant special permissions:<br>
-    &nbsp;• <i>Can view all sections</i> — see every section's meetings on the calendar<br>
-    &nbsp;• <i>Can create meeting groups</i> — save groups of participants for quick selection<br>
-    &nbsp;• <i>Can request new users</i> — allows the staff member to submit new account requests<br><br>
-    <b>Sections &amp; Rooms:</b> Add or rename sections and rooms from the Admin tab.<br><br>
-    <b>Pending requests:</b> Staff can request new accounts or password resets. These appear in the Admin tab under <i>Pending Requests</i>. Approve or reject each one.<br><br>
-    <b>Room blocks:</b> Block a room for a date range so it cannot be booked during that period.<br><br>
-    <b>Staff leave:</b> Record leave for any staff member. Leave dates are visible on the calendar.
-  </div>
-</details>
-
-<!-- SECTION: Meeting Groups -->
-<details style="border-top:1px solid var(--border)">
-  <summary style="padding:12px 18px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-    <i class="ti ti-users-group" aria-hidden="true"></i> Meeting Groups
-  </summary>
-  <div style="padding:0 18px 14px;font-size:13px;line-height:1.7;color:var(--body)">
-    Meeting Groups let you save a preset list of participants so you don't have to add them one by one every time.<br><br>
-    <b>Creating a group:</b> Go to the Admin tab → <i>Meeting Groups</i> → <i>New group</i>. Add members and optionally grant access to specific staff.<br><br>
-    <b>Using a group:</b> When creating a meeting, tap <i>Add group</i> in the participants section. All group members are added at once.<br><br>
-    <i>Requires the "Can create meeting groups" permission to create groups. Any staff granted access can use a group.</i>
-  </div>
-</details>
-
-<div style="padding:14px 18px;border-top:1px solid var(--border);font-size:11px;color:var(--faint);text-align:center">
-  MeetFlow — Meeting Room Booking System
+<div style="text-align:center;font-size:11px;color:var(--faint);padding:8px 0 4px;border-top:1px solid var(--border)">MeetFlow — Meeting Room Booking System</div>
 </div>
-</div>
-<div class="modal-foot"><button class="btn btn-accent" onclick="closeModal()">Close</button></div>`);
+<div class="modal-foot"><button class="btn btn-accent" onclick="closeModal()">Got it</button></div>`);
 }
 
 function openChangePwdModal(){
