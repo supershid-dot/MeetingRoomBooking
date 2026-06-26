@@ -1725,7 +1725,7 @@ function viewMeetingModal(m){
   <div class="modal-foot">
     <button class="btn" onclick="closeModal()">Close</button>
     ${isParticipant?`<button class="btn btn-sm btn-ghost" onclick="downloadICS(window._viewingMeeting)" title="Add to calendar">&#128197; Add to calendar</button>`:''}
-    ${!isCancelled&&m.created_by===U.id&&U.role!=='admin'?`<button class="btn btn-sm ${m.is_locked?'btn-warn':'btn-ghost'}" onclick="toggleMeetingLock(${m.id},${!!m.is_locked})"><i class="ti ti-${m.is_locked?'lock-open':'lock'}" aria-hidden="true"></i>${m.is_locked?'Unlock':'Lock'}</button>`:''}
+    ${!isCancelled&&m.created_by===U.id?`<button class="btn btn-sm ${m.is_locked?'btn-warn':'btn-ghost'}" onclick="toggleMeetingLock(${m.id},${!!m.is_locked})"><i class="ti ti-${m.is_locked?'lock-open':'lock'}" aria-hidden="true"></i>${m.is_locked?'Unlock':'Lock'}</button>`:''}
     ${canEditNow?`<button class="btn ${m.is_prebooked?'btn-accent':'btn-warn'}" onclick="openEditMeetingModal(${m.id})"><i class="ti ti-${m.is_prebooked?'calendar-check':'edit'}" aria-hidden="true"></i>${m.is_prebooked?'Complete Details':'Edit'}</button>
     ${!isCancelled?`<button class="btn btn-danger" onclick="openCancelModal(${m.id})"><i class="ti ti-trash" aria-hidden="true"></i>Cancel</button>`:''}`:''}
   </div>`);
