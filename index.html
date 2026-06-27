@@ -643,6 +643,11 @@ tbody tr:hover td{background:var(--panel2)}
         <div style="padding:8px 16px 4px"><input type="text" id="staff-filter" placeholder="Search staff…" oninput="filterAdminStaff()" style="width:100%;padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--inp);color:var(--ink)"/></div>
         <div class="tbl-wrap"><table><thead><tr><th>Svc no.</th><th>Name</th><th>Rank/Designation</th><th>Email</th><th>Section</th><th>Role</th><th>Access</th><th>Telegram</th><th>Status</th><th>Actions</th></tr></thead><tbody id="staff-tbody"></tbody></table></div>
       </div>
+      <div class="panel" style="margin-top:14px">
+        <div class="panel-head"><div class="panel-title"><i class="ti ti-shield-check" aria-hidden="true"></i>Audit Log</div><button class="btn btn-sm" onclick="renderAuditLogs()"><i class="ti ti-refresh" aria-hidden="true"></i>Refresh</button></div>
+        <div style="padding:8px 16px 4px"><input type="text" id="audit-filter" placeholder="Search by action, user, target…" oninput="filterAuditLog()" style="width:100%;padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;background:var(--inp);color:var(--ink)"/></div>
+        <div class="tbl-wrap"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Details</th></tr></thead><tbody id="audit-tbody"><tr><td colspan="5" style="text-align:center;padding:16px;color:var(--faint)">Loading…</td></tr></tbody></table></div>
+      </div>
     </div>
   </main>
   </div><!-- /.layout -->
@@ -852,6 +857,7 @@ async function doLogin(){
     }
 
     U=user;
+    logAudit('login',null,null,null,'Signed in');
     if(U.must_reset_password){showPage('newpwd');document.getElementById('np-1').value='';document.getElementById('np-2').value='';document.getElementById('np-err').classList.add('hidden');return;}
     enterApp();
   }catch(e){showAlert(err,'Error: '+e.message);}
@@ -863,7 +869,7 @@ async function doSetNewPwd(){
   const issue=pwdIssue(p1);if(issue){showAlert(err,issue);return;}
   if(p1!==p2){showAlert(err,'Passwords do not match.');return;}
   btn.disabled=true;btn.innerHTML='<div class="spin" style="width:15px;height:15px;border-width:2px;margin:0 auto"></div>';
-  try{const h=await hashPwd(p1);await PATCH('staff','svc_no=eq.'+encodeURIComponent(U.svc_no),{password:h,must_reset_password:false});U.must_reset_password=false;showToast('Password updated');enterApp();}
+  try{const h=await hashPwd(p1);await PATCH('staff','svc_no=eq.'+encodeURIComponent(U.svc_no),{password:h,must_reset_password:false});U.must_reset_password=false;logAudit('password_set',null,null,null,'First-login password set');showToast('Password updated');enterApp();}
   catch(e){showAlert(err,'Error: '+e.message);}
   finally{btn.disabled=false;btn.innerHTML='Set password & continue';}
 }
@@ -1569,6 +1575,7 @@ async function saveMeeting(){
       }
     }
     closeModal();showToast('Meeting scheduled');refreshActiveViews();
+    logAudit('meeting_create','meeting',mRow.id,title,`${date} ${fTime(start_slot)}–${fTime(start_slot+duration)}`);
     scheduleNotifs(mRow.id);
     sendMeetingComm(mRow.id,'schedule',null,false,false);
   }catch(e){showAlert(err,'Error: '+e.message);btn.disabled=false;btn.textContent='Schedule';}
@@ -1774,6 +1781,7 @@ async function toggleMeetingLock(meetingId,currentlyLocked){
   if(locking&&!confirm('Lock this meeting?\n\nWhile locked, no one else — including staff in your section — can edit or cancel it. Only admin can still make changes.\n\nYou can unlock it anytime.'))return;
   try{
     await PATCH('meetings',`id=eq.${meetingId}`,{is_locked:locking});
+    logAudit(locking?'meeting_lock':'meeting_unlock','meeting',meetingId,null,null);
     showToast(locking?'Meeting locked — only admin can make changes now':'Meeting unlocked');
     const rows=await GET('meetings',`select=*,participants(*)&id=eq.${meetingId}`);
     if(rows[0])viewMeetingModal(rows[0]);
@@ -1955,6 +1963,7 @@ async function updateMeeting(meetingId){
       await Promise.all(window._mparticipants.map(p=>POST('participants',{meeting_id:meetingId,staff_id:p.staff_id||null,name:p.name,email:p.email||null,is_external:p.is_external||false,rsvp:p.rsvp||'pending',rsvp_note:p.rsvp_note||null})));
     }
     if(notify){await sendMeetingComm(meetingId,'update',reason,true);}
+    logAudit('meeting_edit','meeting',meetingId,title,reason||null);
     closeModal();showToast('Meeting updated');refreshActiveViews();
     scheduleNotifs(meetingId);
   }catch(e){showAlert(err,'Error: '+e.message);btn.disabled=false;btn.textContent='Save changes';}
@@ -1995,6 +2004,7 @@ async function confirmCancel(meetingId,recurrenceId){
     }else{
       await PATCH('meetings',`id=eq.${meetingId}`,cancelData);
     }
+    logAudit('meeting_cancel','meeting',meetingId,null,reason||null);
     closeModal();showToast(cancelSeries?'Series cancelled':'Meeting cancelled');refreshActiveViews();
   }catch(e){showAlert(document.getElementById('cx-err'),'Error: '+e.message);btn.disabled=false;btn.textContent='Cancel meeting';}
 }
@@ -2608,6 +2618,7 @@ async function approveNewUserReq(id){
     if(token&&r.requester?.telegram_chat_id){
       await sendTg(token,r.requester.telegram_chat_id,`✅ Your request to add <b>${r.req_name}</b> has been approved. Login credentials have been sent to their Telegram.`);
     }
+    logAudit('request_approve_new_user','staff_request',id,r.req_name,'Svc: '+r.req_svc_no);
     showToast('Account created — credentials sent via Telegram');
     renderAdmin();
   }catch(e){alert(e.message);}
@@ -2630,6 +2641,7 @@ async function approvePasswordResetReq(id){
     if(token&&r.requester?.telegram_chat_id&&r.requester.id!==r.target_staff_id){
       await sendTg(token,r.requester.telegram_chat_id,`✅ Password for <b>${targetName}</b> has been reset and sent to their Telegram.`);
     }
+    logAudit('request_approve_pwd_reset','staff_request',id,targetName,null);
     showToast('Password reset — credentials sent via Telegram');
     renderAdmin();
   }catch(e){alert(e.message);}
@@ -2639,6 +2651,7 @@ async function rejectStaffRequest(id){
   const note=prompt('Rejection reason (optional):');if(note===null)return;
   try{
     await PATCH('staff_requests','id=eq.'+id,{status:'rejected',processed_by:U.id,processed_at:new Date().toISOString(),admin_response:note||null});
+    logAudit('request_reject','staff_request',id,null,note||null);
     showToast('Request rejected');renderAdmin();
   }catch(e){alert(e.message);}
 }
@@ -2706,11 +2719,15 @@ async function renderAdmin(){
       </div></td></tr>`;
   }).join('')||'<tr><td colspan="10" style="color:var(--faint);text-align:center;padding:12px">No staff</td></tr>';
   filterAdminStaff();
+  renderAuditLogs();
 }
-async function delSection(id,name){if(!confirm(`Remove "${name}"?`))return;try{await DEL('sections','id=eq.'+id);await loadAll();renderAdmin();showToast('Removed');}catch(e){alert(e.message);}}
-async function delRoom(id){if(!confirm('Remove this room?'))return;try{await DEL('rooms','id=eq.'+id);await loadAll();renderAdmin();showToast('Removed');}catch(e){alert(e.message);}}
-async function delGroup(id){if(!confirm('Delete this group?'))return;try{await DEL('meeting_group_members','group_id=eq.'+id);await DEL('meeting_groups','id=eq.'+id);await loadAll();renderAdmin();showToast('Group deleted');}catch(e){alert(e.message);}}
-async function toggleStaff(id,active){try{await PATCH('staff','id=eq.'+id,{active:!active});await loadAll();renderAdmin();showToast('Updated');}catch(e){alert(e.message);}}
+async function delSection(id,name){if(!confirm(`Remove "${name}"?`))return;try{await DEL('sections','id=eq.'+id);logAudit('section_delete','section',id,name,null);await loadAll();renderAdmin();showToast('Removed');}catch(e){alert(e.message);}}
+async function delRoom(id){const r=DB.rooms.find(x=>x.id===id);if(!confirm('Remove this room?'))return;try{await DEL('rooms','id=eq.'+id);logAudit('room_delete','room',id,r?.name,null);await loadAll();renderAdmin();showToast('Removed');}catch(e){alert(e.message);}}
+async function delGroup(id){const g=(DB.groups||[]).find(x=>x.id===id);if(!confirm('Delete this group?'))return;try{await DEL('meeting_group_members','group_id=eq.'+id);await DEL('meeting_groups','id=eq.'+id);logAudit('group_delete','group',id,g?.name,null);await loadAll();renderAdmin();showToast('Group deleted');}catch(e){alert(e.message);}}
+async function toggleStaff(id,active){
+  const s=DB.staff.find(x=>x.id===id);
+  try{await PATCH('staff','id=eq.'+id,{active:!active});logAudit(active?'staff_deactivate':'staff_activate','staff',id,s?.name,null);await loadAll();renderAdmin();showToast('Updated');}catch(e){alert(e.message);}
+}
 
 /* =================== ADMIN MODALS =================== */
 function openModal(type,id){
@@ -2828,6 +2845,7 @@ async function saveSection(id){
   const name=document.getElementById('m-s').value.trim();if(!name)return;
   try{
     if(id){await PATCH('sections','id=eq.'+id,{name});}else{await POST('sections',{name});}
+    logAudit(id?'section_edit':'section_create','section',id||null,name,null);
     await loadAll();closeModal();renderAdmin();showToast(id?'Section updated':'Section added');
   }catch(e){alert(e.message);}
 }
@@ -2836,6 +2854,7 @@ async function saveRoom(id){
   if(!name)return;
   try{
     if(id)await PATCH('rooms','id=eq.'+id,{name});else await POST('rooms',{name});
+    logAudit(id?'room_edit':'room_create','room',id||null,name,null);
     await loadAll();closeModal();renderAdmin();showToast(id?'Room updated':'Room added');
   }catch(e){alert(e.message);}
 }
@@ -2851,6 +2870,7 @@ async function saveGroup(){
     const usrIds=Array.from(document.querySelectorAll('.g-usr:checked')).map(c=>parseInt(c.value));
     if(ids.length)await Promise.all(ids.map(sid=>POST('meeting_group_members',{group_id:g.id,staff_id:sid})));
     if(usrIds.length)await Promise.all(usrIds.map(uid=>POST('meeting_group_access',{group_id:g.id,staff_id:uid})));
+    logAudit('group_create','group',g?.id,name,null);
     await loadAll();closeModal();renderAdmin();showToast('Group created');
   }catch(e){alert(e.message);}
 }
@@ -2866,6 +2886,7 @@ async function updateGroup(id){
     if(ids.length)await Promise.all(ids.map(sid=>POST('meeting_group_members',{group_id:id,staff_id:sid})));
     await DEL('meeting_group_access','group_id=eq.'+id);
     if(usrIds.length)await Promise.all(usrIds.map(uid=>POST('meeting_group_access',{group_id:id,staff_id:uid})));
+    logAudit('group_edit','group',id,name,null);
     await loadAll();closeModal();renderAdmin();showToast('Group updated');
   }catch(e){alert(e.message);}
 }
@@ -2882,7 +2903,7 @@ async function saveStaff(){
   const can_view_all=document.getElementById('m-viewall').checked;
   if(!svc_no||!password||!name){alert('Fill all required fields.');return;}
   const issue=pwdIssue(password);if(issue){alert(issue);return;}
-  try{const hp=await hashPwd(password);await POST('staff',{svc_no,name,rank_short,designation,email,telegram_chat_id,section_id,password:hp,role,active:true,must_reset_password:true,can_view_all});await loadAll();closeModal();renderAdmin();showToast('Staff created — they\'ll set their own password on first login');}catch(e){alert(e.message);}
+  try{const hp=await hashPwd(password);await POST('staff',{svc_no,name,rank_short,designation,email,telegram_chat_id,section_id,password:hp,role,active:true,must_reset_password:true,can_view_all});logAudit('staff_create','staff',null,name,'Svc: '+svc_no);await loadAll();closeModal();renderAdmin();showToast('Staff created — they\'ll set their own password on first login');}catch(e){alert(e.message);}
 }
 async function updateStaff(svc_no){
   const name=document.getElementById('m-fn').value.trim();
@@ -2905,13 +2926,46 @@ async function updateStaff(svc_no){
       await UPSERT('app_config',{key:`ssa_viewer_${staffRow.id}`,value:JSON.stringify(accessTargetIds),updated_at:new Date().toISOString()});
     }
     if(U.svc_no===svc_no){U.can_view_all=can_view_all;U.can_request_users=can_request_users;U.role=role;}
+    logAudit('staff_edit','staff',staffRow?.id,name,'Svc: '+svc_no);
     await loadAll();closeModal();renderAdmin();showToast('Staff updated');
   }catch(e){alert(e.message);}
 }
 async function resetPwd(svc_no){
   const pwd=document.getElementById('m-np').value.trim();
   const issue=pwdIssue(pwd);if(issue){alert(issue);return;}
-  try{const h=await hashPwd(pwd);await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc_no),{password:h,must_reset_password:true});closeModal();showToast('Password reset — they\'ll be prompted on next login');}catch(e){alert(e.message);}
+  try{const h=await hashPwd(pwd);await PATCH('staff','svc_no=eq.'+encodeURIComponent(svc_no),{password:h,must_reset_password:true});const s=DB.staff.find(x=>x.svc_no===svc_no);logAudit('password_reset','staff',s?.id,s?.name,'Admin reset password for '+svc_no);closeModal();showToast('Password reset — they\'ll be prompted on next login');}catch(e){alert(e.message);}
+}
+
+/* =================== AUDIT LOG =================== */
+async function logAudit(action,targetType,targetId,targetName,details){
+  if(!U)return;
+  try{await POST('audit_logs',{actor_id:U.id,actor_svc:U.svc_no,actor_name:staffName(U),action,target_type:targetType||null,target_id:targetId!=null?String(targetId):null,target_name:targetName||null,details:details||null});}catch(e){}
+}
+async function renderAuditLogs(){
+  const tbody=document.getElementById('audit-tbody');if(!tbody)return;
+  tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--faint)">Loading…</td></tr>';
+  try{
+    const logs=await GET('audit_logs','select=*&order=created_at.desc&limit=300');
+    tbody.innerHTML=logs.map(l=>`<tr>
+      <td style="font-size:11px;color:var(--dim);white-space:nowrap">${new Date(l.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+      <td style="font-size:12px;font-weight:600">${esc(l.actor_name||l.actor_svc||'?')}</td>
+      <td><span class="badge ${auditBadgeClass(l.action)}" style="font-size:10px;white-space:nowrap">${esc(l.action.replace(/_/g,' '))}</span></td>
+      <td style="font-size:12px;color:var(--dim)">${l.target_name?esc(l.target_name):l.target_id?'#'+esc(l.target_id):'—'}</td>
+      <td style="font-size:11px;color:var(--faint)">${l.details?esc(l.details):'—'}</td></tr>`).join('')
+      ||'<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--faint)">No audit logs yet</td></tr>';
+    filterAuditLog();
+  }catch(e){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--faint)">Run schema SQL to enable audit logs.</td></tr>';}
+}
+function auditBadgeClass(a){
+  if(!a)return 'b-muted';
+  if(/(delete|cancel|deactivate|reject)/.test(a))return 'b-bad';
+  if(/(create|login|activate|approve)/.test(a))return 'b-good';
+  if(/(edit|update|reset|lock|unlock|set)/.test(a))return 'b-warn';
+  return 'b-muted';
+}
+function filterAuditLog(){
+  const q=((document.getElementById('audit-filter')||{}).value||'').toLowerCase();
+  document.querySelectorAll('#audit-tbody tr').forEach(tr=>{tr.style.display=!q||tr.textContent.toLowerCase().includes(q)?'':'none';});
 }
 
 /* =================== HELPERS =================== */

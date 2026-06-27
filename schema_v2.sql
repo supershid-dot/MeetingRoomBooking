@@ -264,6 +264,24 @@ CREATE TABLE IF NOT EXISTS app_config (
 );
 ALTER TABLE app_config DISABLE ROW LEVEL SECURITY;
 
+-- ─────────────────────────── AUDIT LOGS ──────────────────────────
+-- Immutable record of all significant user actions.
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id          serial PRIMARY KEY,
+  actor_id    integer REFERENCES staff(id),
+  actor_svc   text,
+  actor_name  text,
+  action      text NOT NULL,
+  target_type text,
+  target_id   text,
+  target_name text,
+  details     text,
+  created_at  timestamptz DEFAULT now()
+);
+ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS audit_logs_created_idx ON audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS audit_logs_actor_idx   ON audit_logs(actor_id);
+
 -- ─────────────────────────── STEP 2: ENABLE RLS (run after Edge Function is deployed) ──────────
 -- Run this block AFTER deploying supabase/functions/meetflow-login.
 -- It closes direct anon-key access to all tables and requires a valid
@@ -295,6 +313,7 @@ ALTER TABLE room_blocks           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_leaves          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_sections        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_config            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs            ENABLE ROW LEVEL SECURITY;
 
 -- Create permissive policies for the authenticated role.
 -- The anon key (browser) now requires a valid JWT from the Edge Function.
@@ -304,7 +323,7 @@ DECLARE tbl text;
 BEGIN
   FOREACH tbl IN ARRAY ARRAY['sections','rooms','staff','meetings','participants',
     'notifications','meeting_groups','meeting_group_members','meeting_group_access',
-    'room_blocks','staff_leaves','staff_sections','app_config']::text[] LOOP
+    'room_blocks','staff_leaves','staff_sections','app_config','audit_logs']::text[] LOOP
     EXECUTE format('DROP POLICY IF EXISTS auth_all ON %I', tbl);
     EXECUTE format(
       'CREATE POLICY auth_all ON %I FOR ALL TO authenticated USING (true) WITH CHECK (true)',
